@@ -2,6 +2,7 @@
 using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
 using FinalGirlStatBot.Services.UserActionHandlers;
+using System.Threading;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -77,6 +78,15 @@ public class GameService(GameManager gameManager, IFGStatsUnitOfWork dbConnectio
             cancellationToken: cancellationToken);
 
         statInfo.MessageId = message.Id;
+    }
+
+    public async Task SendUsage(Chat chatInfo, CancellationToken cancellationToken)
+    {
+        var message = await _botClient.SendMessage(
+            chatId: chatInfo.Id,
+            text: "Команды для бота:\n/ng - записать информацию о сыгранной партии,\n/stat - статистика по сыгранным партиям",
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            cancellationToken: cancellationToken);
     }
 
     public async Task ProcessUserInput(long chatId, string data, CancellationToken cancellationToken)

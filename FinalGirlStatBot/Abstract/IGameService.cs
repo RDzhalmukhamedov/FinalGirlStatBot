@@ -9,4 +9,6 @@ public interface IGameService
     Task ProcessUserInput(long chatId, string data, CancellationToken cancellationToken);
 
     Task GetStatistics(Chat chatInfo, CancellationToken cancellationToken);
+
+    Task SendUsage(Chat chatInfo, CancellationToken cancellationToken);
 }

@@ -57,6 +57,7 @@ public class TelegramUpdateHandler : IUpdateHandler
         {
             "/newgame" or "/ng" => _gameService.StartNewGame(message.Chat, stoppingToken),
             "/stat"             => _gameService.GetStatistics(message.Chat, stoppingToken),
+            _                   => _gameService.SendUsage(message.Chat, stoppingToken),
         };
         await action;
     }
