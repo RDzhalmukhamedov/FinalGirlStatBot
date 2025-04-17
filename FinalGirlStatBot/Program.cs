@@ -4,17 +4,14 @@ using FinalGirlStatBot.DB;
 using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.Services;
 using FinalGirlStatBot.Services.UserActionHandlers;
+using Microsoft.AspNetCore.Builder;
 using Telegram.Bot;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
-IHost host = Host.CreateDefaultBuilder(args)
-    .ConfigureLogging(logging =>
-    {
-        //logging.ClearProviders();
-        logging.SetMinimumLevel(LogLevel.Trace);
-        //LogManager.Setup().LoadConfigurationFromAppSettings();
-    })
-    //.UseNLog()
+var builder = WebApplication.CreateBuilder(args);
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+builder.Host
     .ConfigureServices((context, services) =>
     {
         services.Configure<BotConfiguration>(context.Configuration.GetSection(BotConfiguration.Configuration));
@@ -44,7 +41,15 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IKillerRepository, KillerRepository>();
         services.AddTransient<ILocationRepository, LocationRepository>();
         services.AddTransient<IFGStatsUnitOfWork, FGStatsUnitOfWork>();
-    })
-    .Build();
 
-await host.RunAsync();
+        services.AddControllers();
+
+        services.AddHealthChecks();
+    });
+
+var app = builder.Build();
+
+app.MapControllerRoute(name: "default", pattern: "{controller=App}/{action=Index}/{id?}");
+app.MapHealthChecks("/healthz");
+
+await app.RunAsync();
