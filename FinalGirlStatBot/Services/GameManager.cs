@@ -9,7 +9,7 @@ public class GameManager
 {
     private readonly ConcurrentDictionary<long, GameInfo> ActiveGames = new();
 
-    public (bool, Game?) StartNewGame(DB.Domain.User user)
+    public (bool, Game?) StartNewGame(User user)
     {
         var newGame = new Game() { User = user, DatePlayed = DateTime.UtcNow };
         var newInfo = new GameInfo() { Game = newGame, State = GameState.Init, ChatId = user.ChatId };
@@ -19,7 +19,7 @@ public class GameManager
         return (success, newInfo?.Game);
     }
 
-    public Game? FinishGame(long chatId, ResultType result)
+    public (bool, Game?) FinishGame(long chatId, ResultType result)
     {
         var success = ActiveGames.TryRemove(chatId, out var currentGame);
 
@@ -28,7 +28,7 @@ public class GameManager
             currentGame.Game.Result = result;
         }
 
-        return currentGame?.Game;
+        return (success, currentGame?.Game);
     }
 
     public bool SetGirl(long chatId, Girl girl)

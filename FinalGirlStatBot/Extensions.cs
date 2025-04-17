@@ -1,7 +1,4 @@
-﻿using System.Linq;
-using FinalGirlStatBot.DB.Domain;
-using Microsoft.Extensions.Options;
-using Telegram.Bot.Types.ReplyMarkups;
+﻿using Microsoft.Extensions.Options;
 
 namespace FinalGirlStatBot;
 
@@ -15,10 +12,5 @@ public static class Extensions
             throw new ArgumentNullException(nameof(T));
 
         return options.Value;
-    }
-
-    public static InlineKeyboardButton[] ToButtons(this IBaseDomain[] gameObject)
-    {
-        return gameObject.Select(go => new InlineKeyboardButton(go.Name, go.Id.ToString())).ToArray();
     }
 }

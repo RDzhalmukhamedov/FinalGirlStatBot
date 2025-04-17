@@ -25,7 +25,11 @@ public class GameRepository : IGameRepository
 
     public async Task<List<Game>> GetByUser(long chatId, CancellationToken stoppingToken)
     {
-        return (await _context.Users.Include(u => u.Games).FirstAsync(u => u.ChatId == chatId)).Games.ToList();
+        return (await _context.Users
+            .Include(u => u.Games).ThenInclude(u => u.Girl)
+            .Include(u => u.Games).ThenInclude(u => u.Killer)
+            .Include(u => u.Games).ThenInclude(u => u.Location)
+            .FirstAsync(u => u.ChatId == chatId)).Games.ToList();
     }
 
     public async Task Add(Game game, CancellationToken stoppingToken)

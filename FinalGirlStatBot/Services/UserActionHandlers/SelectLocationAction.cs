@@ -4,21 +4,20 @@ using Telegram.Bot;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
-// TODO Возможно сделать Generic
 public class SelectLocationAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
 {
     public override async Task DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken)
     {
-        var locationId = Convert.ToInt32(data);
+        var success = int.TryParse(data, out var locationId);
 
-        if (locationId == 0)
+        if (!success)
         {
-            var success = Enum.TryParse(data, out Season season);
+            success = Enum.TryParse(data, out Season season);
             if (success)
             {
-                await SelectedLocation(gameInfo, cancellationToken, season);
+                await SendLocationSelector(gameInfo, cancellationToken, season);
             }
-            else if (data.Equals("reset"))
+            else if (data.Equals(Shared.Text.ResetCallback))
             {
 
                 await Reset(gameInfo, cancellationToken);
@@ -31,10 +30,10 @@ public class SelectLocationAction(IFGStatsUnitOfWork dbConnection, ITelegramBotC
 
         if (location is not null)
         {
-            gameInfo.Game.Location = location;
+            _gameManager.SetLocation(gameInfo.ChatId, location);
             gameInfo.State = GameState.Init;
 
-            await BaseMessage(gameInfo, cancellationToken);
+            await SendInitMessage(gameInfo, cancellationToken);
         }
     }
 }

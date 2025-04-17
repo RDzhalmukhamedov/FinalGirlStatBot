@@ -1,4 +1,5 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.DB.Domain;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -11,46 +12,47 @@ public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotC
     {
         var message = data switch
         {
-            "win" => SetWin(gameInfo, cancellationToken),
-            "lose" => SetLose(gameInfo, cancellationToken),
-            "reset" => Reset(gameInfo, cancellationToken),
+            Shared.Text.WinCallback => SetWin(gameInfo, cancellationToken),
+            Shared.Text.LoseCallback => SetLose(gameInfo, cancellationToken),
+            Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
         };
+
+        await message;
     }
 
     private async Task<Message> SetWin(GameInfo gameInfo, CancellationToken cancellationToken)
     {
-        gameInfo.Game.Result = DB.Domain.ResultType.Win;
-
-        await _db.Games.Add(gameInfo.Game, cancellationToken);
-        await _db.Commit(cancellationToken);
-
-        _gameManager.DeleteGame(gameInfo.Game.User.ChatId);
-
-        await _botClient.DeleteMessage(gameInfo.Game.User.ChatId, (int)gameInfo.MessageId, cancellationToken);
-
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.Game.User.ChatId,
-            text: $"Снято!\n{gameInfo.Game}\nПоздравляем с победой!",
-            replyMarkup: new ReplyKeyboardRemove(),
-            cancellationToken: cancellationToken);
-
-        return message;
+        return await SetGameResult(gameInfo, ResultType.Win,
+            $"{Shared.Text.ShootEndedMessage}\n{gameInfo.Game}\n{Shared.Text.WinCongratsMessage}", cancellationToken);
     }
 
     private async Task<Message> SetLose(GameInfo gameInfo, CancellationToken cancellationToken)
     {
-        gameInfo.Game.Result = DB.Domain.ResultType.Lose;
+        return await SetGameResult(gameInfo, ResultType.Lose,
+            $"{Shared.Text.ShootEndedMessage} {Shared.Text.KillerWinsMessage}\n{gameInfo.Game}\n{Shared.Text.LoseCongratsMessage}", cancellationToken);
+    }
 
-        await _db.Games.Add(gameInfo.Game, cancellationToken);
-        await _db.Commit(cancellationToken);
+    private async Task<Message> SetGameResult(GameInfo gameInfo, ResultType result, string messageText, CancellationToken cancellationToken)
+    {
+        var (success, game) = _gameManager.FinishGame(gameInfo.ChatId, result);
+        var text = messageText;
 
-        _gameManager.DeleteGame(gameInfo.Game.User.ChatId);
+        if (success)
+        {
+            await _db.Games.Add(game, cancellationToken);
+            await _db.Commit(cancellationToken);
+        }
+        else
+        {
+            text = Shared.Text.SomethingWrongMessage;
+        }
 
-        await _botClient.DeleteMessage(gameInfo.Game.User.ChatId, (int)gameInfo.MessageId, cancellationToken);
+        await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
 
         var message = await _botClient.SendMessage(
-            chatId: gameInfo.Game.User.ChatId,
-            text: $"Снято!\n{gameInfo.Game}\nПовезёт в следующий раз!",
+            chatId: gameInfo.ChatId,
+            text: text,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
             replyMarkup: new ReplyKeyboardRemove(),
             cancellationToken: cancellationToken);
 

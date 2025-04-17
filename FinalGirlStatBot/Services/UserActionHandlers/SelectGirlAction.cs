@@ -8,16 +8,16 @@ public class SelectGirlAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
 {
     public override async Task DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken)
     {
-        var girlId = Convert.ToInt32(data);
+        var success = int.TryParse(data, out var girlId);
 
-        if (girlId == 0)
+        if (!success)
         {
-            var success = Enum.TryParse(data, out Season season);
+            success = Enum.TryParse(data, out Season season);
             if (success)
             {
-                await SelectedGirl(gameInfo, cancellationToken, season);
+                await SendGirlSelector(gameInfo, cancellationToken, season);
             }
-            else if (data.Equals("reset"))
+            else if (data.Equals(Shared.Text.ResetCallback))
             {
 
                 await Reset(gameInfo, cancellationToken);
@@ -30,10 +30,10 @@ public class SelectGirlAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
 
         if (girl is not null)
         {
-            gameInfo.Game.Girl = girl;
+            _gameManager.SetGirl(gameInfo.ChatId, girl);
             gameInfo.State = GameState.Init;
 
-            await BaseMessage(gameInfo, cancellationToken);
+            await SendInitMessage(gameInfo, cancellationToken);
         }
     }
 }

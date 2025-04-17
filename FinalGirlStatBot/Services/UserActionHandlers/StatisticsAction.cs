@@ -2,7 +2,6 @@
 using FinalGirlStatBot.DB.Abstract;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
@@ -12,35 +11,38 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
     {
         var message = data switch
         {
-            "statKiller" => StatsByKiller(gameInfo, cancellationToken),
-            "statLocation" => StatsByLocation(gameInfo, cancellationToken),
-            "reset" => Reset(gameInfo, cancellationToken),
+            Shared.Text.KillerStatsCallback => StatsByKiller(gameInfo, cancellationToken),
+            Shared.Text.LocationStatsCallback => StatsByLocation(gameInfo, cancellationToken),
+            Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
         };
+
+        await message;
+        gameInfo.MessageId = message.Id;
     }
 
     private async Task<Message> StatsByKiller(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         StringBuilder sb = new();
-        var gamesByKiller = (await _db.Games.GetByUser(chatId: gameInfo.ChatId, cancellationToken)).GroupBy(g => g.Killer.Id).ToDictionary(g => g.Key, g => g.ToList());
+        var gamesByKiller = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken))
+            .Where(g => g.Killer is not null)
+            .GroupBy(g => g.Killer.Id)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var games in gamesByKiller)
         {
             if (games.Value.Count > 0)
             {
                 var wins = games.Value.Where(g => g.Result == DB.Domain.ResultType.Win).Count();
                 var loses = games.Value.Where(g => g.Result == DB.Domain.ResultType.Lose).Count();
-                sb.AppendLine($"*{games.Value.First().Killer.Name}*: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
+                sb.AppendLine($"<b>{games.Value.First().Killer.Name}</b>: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
             }
         }
-
-        var keyboard = new InlineKeyboardButton[][]
-            {
-                [("*·Статистика по 🔪·*", "statKiller"), ("Статистика по 🏫", "statLocation")]
-            };
 
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
             text: sb.ToString(),
-            replyMarkup: keyboard,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            replyMarkup: Shared.Buttons.StatsKeyboardKiller,
             cancellationToken: cancellationToken);
 
         return message;
@@ -49,26 +51,26 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
     private async Task<Message> StatsByLocation(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         StringBuilder sb = new();
-        var gamesByLocation = (await _db.Games.GetByUser(chatId: gameInfo.ChatId, cancellationToken)).GroupBy(g => g.Location.Id).ToDictionary(g => g.Key, g => g.ToList());
+        var gamesByLocation = (await _db.Games.GetByUser(chatId: gameInfo.ChatId, cancellationToken))
+            .Where(g => g.Location is not null)
+            .GroupBy(g => g.Location.Id)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var games in gamesByLocation)
         {
             if (games.Value.Count > 0)
             {
                 var wins = games.Value.Where(g => g.Result == DB.Domain.ResultType.Win).Count();
                 var loses = games.Value.Where(g => g.Result == DB.Domain.ResultType.Lose).Count();
-                sb.AppendLine($"*{games.Value.First().Location.Name}*: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
+                sb.AppendLine($"<b>{games.Value.First().Location.Name}</b>: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
             }
         }
-
-        var keyboard = new InlineKeyboardButton[][]
-            {
-                [("Статистика по 🔪", "statKiller"), ("*·Статистика по 🏫·*", "statLocation")]
-            };
 
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
             text: sb.ToString(),
-            replyMarkup: keyboard,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            replyMarkup: Shared.Buttons.StatsKeyboardLocation,
             cancellationToken: cancellationToken);
 
         return message;

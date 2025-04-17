@@ -1,7 +1,6 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
@@ -11,63 +10,63 @@ public class InitStateAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient
     {
         var message = data switch
         {
-            "sGirl" => SelectedGirl(gameInfo, cancellationToken),
-            "sKiller" => SelectedKiller(gameInfo, cancellationToken),
-            "sLocation" => SelectedLocation(gameInfo, cancellationToken),
-            "rGirl" => RandomGirl(gameInfo, cancellationToken),
-            "rKiller" => RandomKiller(gameInfo, cancellationToken),
-            "rLocation" => RandomLocation(gameInfo, cancellationToken),
-            "startGame" => StartGame(gameInfo, cancellationToken),
-            "reset" => Reset(gameInfo, cancellationToken),
+            Shared.Text.SelectGirlCallback => SendGirlSelector(gameInfo, cancellationToken),
+            Shared.Text.SelectKillerCallback => SendKillerSelector(gameInfo, cancellationToken),
+            Shared.Text.SelectLocationCallback => SendLocationSelector(gameInfo, cancellationToken),
+            Shared.Text.RandomGirlCallback => SelectRandomGirl(gameInfo, cancellationToken),
+            Shared.Text.RandomKillerCallback => SelectRandomKiller(gameInfo, cancellationToken),
+            Shared.Text.RandomLocationCallback => SelectRandomLocation(gameInfo, cancellationToken),
+            Shared.Text.StartGameCallback => StartGame(gameInfo, cancellationToken),
+            Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
+            Shared.Text.InitPrivateCallback => SendInitMessage(gameInfo, cancellationToken),
         };
+
+        await message;
     }
 
-    private async Task<Message> RandomGirl(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<Message> SelectRandomGirl(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         var allGirls = await _db.Girls.GetAll(cancellationToken);
-        Random rand = new();
-        int toSkip = rand.Next(0, allGirls.Count);
-        var girl = allGirls.Skip(toSkip).Take(1).First();
+        _gameManager.SetGirl(gameInfo.ChatId, GetRandomObject(allGirls));
 
-        gameInfo.Game.Girl = girl;
-
-        return await BaseMessage(gameInfo, cancellationToken);
+        return await SendInitMessage(gameInfo, cancellationToken);
     }
 
-    private async Task<Message> RandomKiller(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<Message> SelectRandomKiller(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         var allKillers = await _db.Killers.GetAll(cancellationToken);
-        Random rand = new();
-        int toSkip = rand.Next(0, allKillers.Count);
-        var killer = allKillers.Skip(toSkip).Take(1).First();
+        _gameManager.SetKiller(gameInfo.ChatId, GetRandomObject(allKillers));
 
-        gameInfo.Game.Killer = killer;
-
-        return await BaseMessage(gameInfo, cancellationToken);
+        return await SendInitMessage(gameInfo, cancellationToken);
     }
 
-    private async Task<Message> RandomLocation(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<Message> SelectRandomLocation(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         var allLocations = await _db.Locations.GetAll(cancellationToken);
+        _gameManager.SetLocation(gameInfo.ChatId, GetRandomObject(allLocations));
+
+        return await SendInitMessage(gameInfo, cancellationToken);
+    }
+
+    private TDto GetRandomObject<TDto>(List<TDto> dtos) where TDto : class
+    {
         Random rand = new();
-        int toSkip = rand.Next(0, allLocations.Count);
-        var location = allLocations.Skip(toSkip).Take(1).First();
-
-        gameInfo.Game.Location = location;
-
-        return await BaseMessage(gameInfo, cancellationToken);
+        int toSkip = rand.Next(0, dtos.Count);
+        return dtos.Skip(toSkip).Take(1).First();
     }
 
     private async Task<Message> StartGame(GameInfo gameInfo, CancellationToken cancellationToken)
     {
         gameInfo.State = GameState.GameInProgress;
 
-        var keyboard = new InlineKeyboardButton[][]
-            {
-                [("❌ Поражение", "lose"), ("🗘 Сброс", "reset"), ("✔️ Победа", "win")]
-            };
-        var message = await _botClient.EditMessageText(gameInfo.Game.User.ChatId, (int)gameInfo.MessageId, $"Отметьте результат партии:");
-        message = await _botClient.EditMessageReplyMarkup(gameInfo.Game.User.ChatId, message.Id, keyboard);
+        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
+        var message = await _botClient.SendMessage(
+            chatId: gameInfo.ChatId,
+            text: Shared.Text.WriteResultsMessage,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            replyMarkup: Shared.Buttons.ResultKeyboard,
+            cancellationToken: cancellationToken);
+
         gameInfo.MessageId = message.Id;
 
         return message;
