@@ -6,5 +6,6 @@ public enum Season
     S2 = 2,
     S3 = 3,
     S4 = 4,
-    Promo = 99,
+    Special = 99,
+    Promo = 100,
 }

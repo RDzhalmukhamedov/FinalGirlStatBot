@@ -9,7 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include=".choreo\component.yaml" />
+    <Compile Remove=".choreo\**" />
+    <Content Remove=".choreo\**" />
+    <EmbeddedResource Remove=".choreo\**" />
+    <None Remove=".choreo\**" />
   </ItemGroup>
 
   <ItemGroup>

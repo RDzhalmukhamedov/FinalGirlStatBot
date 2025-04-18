@@ -1,7 +1,10 @@
-schemaVersion: 1.0 
- # Example endpoint configuration
+schemaVersion: "1.2"
 endpoints:
-- name: final-girl-stats-bot
-  service:
-     port: 9090
-  type: REST
+    - name: final-girl-stats-bot
+      displayName: final-girl-stats-bot
+      service:
+        basePath: /
+        port: 9090
+      type: REST
+      networkVisibilities:
+        - Public

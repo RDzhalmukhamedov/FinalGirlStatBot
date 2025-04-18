@@ -42,4 +42,4 @@ COPY --from=publish /app/publish .
 USER 10014
 
 ENTRYPOINT ["dotnet", "FinalGirlStatBot.dll"]
-EXPOSE 443 5672 9090
+EXPOSE 443 5432 9090
