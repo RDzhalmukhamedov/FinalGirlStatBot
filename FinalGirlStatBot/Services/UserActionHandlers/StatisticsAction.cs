@@ -7,17 +7,18 @@ namespace FinalGirlStatBot.Services.UserActionHandlers;
 
 public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken)
+    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
     {
-        var message = data switch
+        var message = await (data switch
         {
             Shared.Text.KillerStatsCallback => StatsByKiller(gameInfo, cancellationToken),
             Shared.Text.LocationStatsCallback => StatsByLocation(gameInfo, cancellationToken),
             Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
-        };
+        });
 
-        await message;
         gameInfo.MessageId = message.Id;
+
+        return message;
     }
 
     private async Task<Message> StatsByKiller(GameInfo gameInfo, CancellationToken cancellationToken)
@@ -38,6 +39,7 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
             }
         }
 
+        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
             text: sb.ToString(),
@@ -66,6 +68,7 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
             }
         }
 
+        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
             text: sb.ToString(),

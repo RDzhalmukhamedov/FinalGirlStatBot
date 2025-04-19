@@ -24,13 +24,16 @@ public static class Shared
         public const string RandomLocation = "Случ. 🏠";
         public const string RandomLocationCallback = "rLocation";
 
-        public const string Win = "🏆\nПобеда";
+        public const string RandomUnplayed = "🎲 Случ. из неигранного";
+        public const string RandomUnplayedCallback = "rUnplayed";
+
+        public const string Win = "🏆 Победа";
         public const string WinCallback = "win";
 
-        public const string Lose = "❌\nПоражение";
+        public const string Lose = "☠ Поражение";
         public const string LoseCallback = "lose";
 
-        public const string Reset = "🔄\nСброс";
+        public const string Reset = "↩️ Отмена";
         public const string ResetCallback = "reset";
 
         public const string StartGame = "🎥 Начинаем съёмку!";
@@ -38,6 +41,13 @@ public static class Shared
 
         public const string WriteResults = "✏ Отметить результат";
         public const string WriteResultsCallback = "write";
+
+        public const string RepeatGame = "🔄 Повторим?";
+        public const string RepeatGameCallback = "repeat";
+
+        public const string DeleteGame = "🗑 Удалить из статистики";
+        public const string DeleteGameCallback = "deleteGame";
+        public const string ConfirmDeleteGameCallback = "confirmDeleteGame";
 
         public const string KillerStats = "По 🔪";
         public const string KillerStatsCallback = "killerStat";
@@ -56,11 +66,12 @@ public static class Shared
         public const string GameResetedMessage = "Съёмки прерваны, статистика записана не будет!";
         public const string TotalGamesMessage = "Общее количество игр:";
         public const string WinPercentageMessage = "Процент побед:";
-        public const string ShootEndedMessage = "Снято!";
+        public const string ShootEndedMessage = "🎬 Снято!";
         public const string WinCongratsMessage = "Поздравляем с победой!🎉";
         public const string LoseCongratsMessage = "Повезёт в следующий раз!";
         public const string KillerWinsMessage = "В этот раз победил убийца!";
         public const string SomethingWrongMessage = "Что-то пошло не так, попробуйте ещё раз";
+        public const string DeleteGameMessage = "Удаляем информацию о";
     }
 
     public static class Buttons
@@ -84,10 +95,15 @@ public static class Shared
         public static readonly InlineKeyboardButton LocationStats       = (Text.LocationStats, Text.LocationStatsCallback);
         public static readonly InlineKeyboardButton LocationStatsMarked = ($"•{Text.LocationStats}•", Text.LocationStatsCallback);
 
+        public static readonly InlineKeyboardButton RepeatGame          = (Text.RepeatGame, Text.RepeatGameCallback);
+        public static readonly InlineKeyboardButton DeleteGame          = (Text.DeleteGame, Text.DeleteGameCallback);
+        public static readonly InlineKeyboardButton RandomUnplayed = (Text.RandomUnplayed, Text.RandomUnplayedCallback);
+
         public static readonly InlineKeyboardButton[][] InitKeyboard =
         [
             [SelectGirl, SelectKiller, SelectLocation],
             [RandomGirl, RandomKiller, RandomLocation],
+            //[RandomUnplayed],
             [Reset]
         ];
 
@@ -95,6 +111,7 @@ public static class Shared
         [
             [SelectGirl, SelectKiller, SelectLocation],
             [RandomGirl, RandomKiller, RandomLocation],
+            //[RandomUnplayed],
             [Reset, StartGame],
         ];
 
@@ -116,6 +133,11 @@ public static class Shared
         public static readonly InlineKeyboardButton[][] StatsKeyboardLocation =
         [
             [KillerStats, LocationStatsMarked]
+        ];
+
+        public static readonly InlineKeyboardButton[][] RepeatGameKeyboard =
+        [
+            [RepeatGame]
         ];
     }
 }

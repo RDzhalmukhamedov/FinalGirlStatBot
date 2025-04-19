@@ -32,6 +32,15 @@ public class GameRepository : IGameRepository
             .FirstAsync(u => u.ChatId == chatId)).Games.ToList();
     }
 
+    public async Task<Game> GetLastForUser(long chatId, CancellationToken stoppingToken)
+    {
+        return (await _context.Users
+            .Include(u => u.Games).ThenInclude(u => u.Girl)
+            .Include(u => u.Games).ThenInclude(u => u.Killer)
+            .Include(u => u.Games).ThenInclude(u => u.Location)
+            .FirstAsync(u => u.ChatId == chatId)).Games.OrderByDescending(g => g.Id).First();
+    }
+
     public async Task Add(Game game, CancellationToken stoppingToken)
     {
         game.ShortInfo = game.ToString();

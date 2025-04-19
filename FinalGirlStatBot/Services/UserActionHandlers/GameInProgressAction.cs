@@ -8,7 +8,7 @@ namespace FinalGirlStatBot.Services.UserActionHandlers;
 
 public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken)
+    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
     {
         var message = data switch
         {
@@ -17,7 +17,7 @@ public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotC
             Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
         };
 
-        await message;
+        return await message;
     }
 
     private async Task<Message> SetWin(GameInfo gameInfo, CancellationToken cancellationToken)
@@ -47,13 +47,19 @@ public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotC
             text = Shared.Text.SomethingWrongMessage;
         }
 
+        Shared.Buttons.RepeatGame.CallbackData = $"{Shared.Text.RepeatGameCallback}-{game?.Id}";
+        InlineKeyboardButton[][] keyboard =
+        [
+            [Shared.Buttons.RepeatGame]
+        ];
+
         await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
 
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
             text: text,
             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: new ReplyKeyboardRemove(),
+            replyMarkup: keyboard,
             cancellationToken: cancellationToken);
 
         return message;

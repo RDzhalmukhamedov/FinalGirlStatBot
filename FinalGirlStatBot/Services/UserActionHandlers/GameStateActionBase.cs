@@ -12,16 +12,16 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
     protected readonly ITelegramBotClient _botClient = botClient;
     protected readonly GameManager _gameManager = gameManager;
 
-    public abstract Task DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken);
+    public abstract Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null);
 
-    protected async Task<Message> SendInitMessage(GameInfo gameInfo, CancellationToken cancellationToken)
+    protected async Task<Message> SendInitMessage(GameInfo gameInfo, CancellationToken cancellationToken, string text = "")
     {
         var keyboard = gameInfo.ReadyToStart ? Shared.Buttons.InitKeyboardReadyToStart : Shared.Buttons.InitKeyboard;
 
         if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
         var message = await _botClient.SendMessage(
             chatId: gameInfo.ChatId,
-            text: $"{Shared.Text.SelectionQuestionMessage}\n{gameInfo.Game}",
+            text: string.IsNullOrEmpty(text) ? $"{Shared.Text.SelectionQuestionMessage}\n{gameInfo.Game}" : text,
             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
             replyMarkup: keyboard,
             cancellationToken: cancellationToken);
