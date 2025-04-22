@@ -43,10 +43,12 @@ public static class Shared
         public const string WriteResultsCallback = "write";
 
         public const string RepeatGame = "🔄 Повторим?";
+        public const string RepeatGameShort = "🔄 Повторить";
         public const string RepeatGameCallback = "repeat";
 
         public const string DeleteGame = "🗑 Удалить из статистики";
-        public const string DeleteGameCallback = "deleteGame";
+        public const string DeleteGameShort = "🗑 Удалить";
+        public const string DeleteGameCallback = "delete";
         public const string ConfirmDeleteGameCallback = "confirmDeleteGame";
 
         public const string KillerStats = "По 🔪";
@@ -54,6 +56,12 @@ public static class Shared
 
         public const string LocationStats = "По 🏠";
         public const string LocationStatsCallback = "locationStat";
+
+        public const string GirlStats = "По 👩";
+        public const string GirlStatsCallback = "girlStat";
+
+        public const string HistoryStats = "📚 История игр";
+        public const string HistoryStatsCallback = "historyStat";
 
         public const string InitPrivateCallback = "init";
 
@@ -72,6 +80,8 @@ public static class Shared
         public const string KillerWinsMessage = "В этот раз победил убийца!";
         public const string SomethingWrongMessage = "Что-то пошло не так, попробуйте ещё раз";
         public const string DeleteGameMessage = "Удаляем информацию о";
+
+        public const string Unknown = "Неизвестно";
     }
 
     public static class Buttons
@@ -94,10 +104,14 @@ public static class Shared
         public static readonly InlineKeyboardButton KillerStatsMarked   = ($"•{Text.KillerStats}•", Text.KillerStatsCallback);
         public static readonly InlineKeyboardButton LocationStats       = (Text.LocationStats, Text.LocationStatsCallback);
         public static readonly InlineKeyboardButton LocationStatsMarked = ($"•{Text.LocationStats}•", Text.LocationStatsCallback);
+        public static readonly InlineKeyboardButton GirlStats           = (Text.GirlStats, Text.GirlStatsCallback);
+        public static readonly InlineKeyboardButton GirlStatsMarked     = ($"•{Text.GirlStats}•", Text.GirlStatsCallback);
+        public static readonly InlineKeyboardButton HistoryStats        = (Text.HistoryStats, Text.HistoryStatsCallback);
+        public static readonly InlineKeyboardButton HistoryStatsMarked  = ($"•{Text.HistoryStats}•", Text.HistoryStatsCallback);
 
         public static readonly InlineKeyboardButton RepeatGame          = (Text.RepeatGame, Text.RepeatGameCallback);
         public static readonly InlineKeyboardButton DeleteGame          = (Text.DeleteGame, Text.DeleteGameCallback);
-        public static readonly InlineKeyboardButton RandomUnplayed = (Text.RandomUnplayed, Text.RandomUnplayedCallback);
+        public static readonly InlineKeyboardButton RandomUnplayed      = (Text.RandomUnplayed, Text.RandomUnplayedCallback);
 
         public static readonly InlineKeyboardButton[][] InitKeyboard =
         [
@@ -122,17 +136,26 @@ public static class Shared
 
         public static readonly InlineKeyboardButton[][] StatsKeyboard =
         [
-            [KillerStats, LocationStats]
+            [GirlStats, KillerStats, LocationStats],
+            [HistoryStats]
+        ];
+
+        public static readonly InlineKeyboardButton[][] StatsKeyboardGirl =
+        [
+            [GirlStatsMarked, KillerStats, LocationStats],
+            [HistoryStats]
         ];
 
         public static readonly InlineKeyboardButton[][] StatsKeyboardKiller =
         [
-            [KillerStatsMarked, LocationStats]
+            [GirlStats, KillerStatsMarked, LocationStats],
+            [HistoryStats]
         ];
 
         public static readonly InlineKeyboardButton[][] StatsKeyboardLocation =
         [
-            [KillerStats, LocationStatsMarked]
+            [GirlStats, KillerStats, LocationStatsMarked],
+            [HistoryStats]
         ];
 
         public static readonly InlineKeyboardButton[][] RepeatGameKeyboard =
