@@ -123,7 +123,7 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             var dateString = DateOnly.FromDateTime(
                 TimeZoneInfo.ConvertTimeFromUtc(game.DatePlayed, TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time")))
-                .ToString();
+                .ToString("dd/MM/yyyy");
             var resultString = game.Result switch
             {
                 DB.Domain.ResultType.Unknown => Shared.Text.Unknown,
