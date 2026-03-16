@@ -5,39 +5,48 @@ using Telegram.Bot.Types;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
-public class SelectKillerAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
+public class SelectKillerAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager)
+    : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
+    public override async Task<Message> SendActionMessage
+        (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        var success = int.TryParse(data, out var killerId);
-        var message = new Message();
+        return await SendKillerSelector(gameInfo, deletePrev, additionalMessage, cancellationToken: cancellationToken);
+    }
 
-        if (!success)
+    public override async Task<ActionResult> ProcessCallback
+        (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null)
+    {
+        var killerSelected = int.TryParse(userAction, out var killerId);
+        if (killerSelected)
         {
-            success = Enum.TryParse(data, out Season season);
-            if (success)
+            var killer = await _db.Killers.GetById(killerId, cancellationToken);
+            if (killer is not null)
             {
-                message = await SendKillerSelector(gameInfo, cancellationToken, season);
+                _gameManager.SetKiller(gameInfo, killer);
+                return ActionResult.Ok(GameState.CreatingGame);
             }
-            else if (data.Equals(Shared.Text.ResetCallback))
-            {
-
-                message = await Reset(gameInfo, cancellationToken);
-            }
-
-            return message;
         }
 
-        var killer = await _db.Killers.GetById(killerId, cancellationToken);
+        var seasonSelected = Enum.TryParse(userAction, out Season season);
 
-        if (killer is not null)
+        if (seasonSelected)
         {
-            _gameManager.SetKiller(gameInfo.ChatId, killer);
-            gameInfo.State = GameState.Init;
+            await SendKillerSelector(gameInfo, selectedSeason: season, cancellationToken: cancellationToken);
 
-            message = await SendInitMessage(gameInfo, cancellationToken);
+            return ActionResult.Ok();
         }
 
-        return message;
+        return ActionResult.Error(Shared.Text.SomethingWrongMessage);
+    }
+
+    private async Task<Message> SendKillerSelector(GameInfo gameInfo, bool deletePrev = false,
+        string additionalMessage = "", Season selectedSeason = Season.S1, CancellationToken cancellationToken = default)
+    {
+        var allKillers = await _db.Killers.GetAll(cancellationToken);
+
+        var keyboard = GetSelectionButtons(allKillers, selectedSeason);
+
+        return await UpdateMessage(gameInfo, Shared.Text.SelectKillerMessage, keyboard, deletePrev, additionalMessage, cancellationToken);
     }
 }

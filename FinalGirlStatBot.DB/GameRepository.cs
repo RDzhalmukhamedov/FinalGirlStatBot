@@ -1,64 +1,72 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
-using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinalGirlStatBot.DB;
 
 public class GameRepository : IGameRepository
 {
-    private readonly FGStatsContext _context;
+    private readonly IDbContextFactory<FGStatsContext> _contextFactory;
 
-    public GameRepository(FGStatsContext fgStatsContext)
+    public GameRepository(IDbContextFactory<FGStatsContext> contextFactory)
     {
-        _context = fgStatsContext;
+        _contextFactory = contextFactory;
     }
 
-    public async Task<Game?> GetById(int id, CancellationToken stoppingToken)
+    public async Task<GameDto?> GetById(int id, CancellationToken cancellationToken = default)
     {
-        return await _context.Games.Include(g => g.Girl).Include(g => g.Killer).Include(g => g.Location).FirstOrDefaultAsync(g => g.Id == id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Games
+            .AsNoTracking()
+            .Include(g => g.Girl)
+            .Include(g => g.Killer)
+            .Include(g => g.Location)
+            .ToDtos()
+            .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
     }
 
-    public async Task<List<Game>> GetAll(CancellationToken stoppingToken)
+    public async Task<IEnumerable<GameDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _context.Games.ToListAsync(stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await context.Games
+            .AsNoTracking()
+            .OrderByDescending(g => g.DatePlayed)
+            .ToListAsync(cancellationToken))
+            .ToDtos();
     }
 
-    public async Task<List<Game>> GetByUser(long chatId, CancellationToken stoppingToken)
+    public async Task<IEnumerable<GameDto>> GetByUser(long chatId, CancellationToken cancellationToken = default)
     {
-        return (await _context.Users
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users
+            .AsNoTracking()
             .Include(u => u.Games).ThenInclude(u => u.Girl)
             .Include(u => u.Games).ThenInclude(u => u.Killer)
             .Include(u => u.Games).ThenInclude(u => u.Location)
-            .FirstAsync(u => u.ChatId == chatId)).Games.ToList();
+            .FirstOrDefaultAsync(u => u.ChatId == chatId, cancellationToken);
+
+        return user?.Games.ToDtos().OrderByDescending(g => g.DatePlayed).ToList() ?? [];
     }
 
-    public async Task<Game> GetLastForUser(long chatId, CancellationToken stoppingToken)
+    public async Task<int> Add(GameDto game, CancellationToken cancellationToken = default)
     {
-        return (await _context.Users
-            .Include(u => u.Games).ThenInclude(u => u.Girl)
-            .Include(u => u.Games).ThenInclude(u => u.Killer)
-            .Include(u => u.Games).ThenInclude(u => u.Location)
-            .FirstAsync(u => u.ChatId == chatId)).Games.OrderByDescending(g => g.Id).First();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = game.ToEntity();
+        await context.Games.AddAsync(entity, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return entity.Id;
     }
 
-    public async Task Add(Game game, CancellationToken stoppingToken)
+    public async Task Delete(int id, CancellationToken cancellationToken = default)
     {
-        game.ShortInfo = game.ToString();
-        await _context.Games.AddAsync(game, stoppingToken);
-    }
-
-    public void Update(Game game)
-    {
-        game.ShortInfo = game.ToString();
-        _context.Games.Update(game);
-    }
-
-    public async Task Delete(int id, CancellationToken stoppingToken)
-    {
-        var game = await GetById(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var game = await context.Games.FindAsync(id, cancellationToken);
         if (game is not null)
         {
-            _context.Games.Remove(game);
+            context.Games.Remove(game);
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

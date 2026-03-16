@@ -5,39 +5,48 @@ using Telegram.Bot.Types;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
-public class SelectLocationAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
+public class SelectLocationAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager)
+    : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
+    public override async Task<Message> SendActionMessage
+        (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        var success = int.TryParse(data, out var locationId);
-        var message = new Message();
+        return await SendLocationSelector(gameInfo, deletePrev, additionalMessage, cancellationToken: cancellationToken);
+    }
 
-        if (!success)
+    public override async Task<ActionResult> ProcessCallback
+        (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null)
+    {
+        var locationSelected = int.TryParse(userAction, out var locationId);
+        if (locationSelected)
         {
-            success = Enum.TryParse(data, out Season season);
-            if (success)
+            var location = await _db.Locations.GetById(locationId, cancellationToken);
+            if (location is not null)
             {
-                message = await SendLocationSelector(gameInfo, cancellationToken, season);
+                _gameManager.SetLocation(gameInfo, location);
+                return ActionResult.Ok(GameState.CreatingGame);
             }
-            else if (data.Equals(Shared.Text.ResetCallback))
-            {
-
-                message = await Reset(gameInfo, cancellationToken);
-            }
-
-            return message;
         }
 
-        var location = await _db.Locations.GetById(locationId, cancellationToken);
+        var seasonSelected = Enum.TryParse(userAction, out Season season);
 
-        if (location is not null)
+        if (seasonSelected)
         {
-            _gameManager.SetLocation(gameInfo.ChatId, location);
-            gameInfo.State = GameState.Init;
+            await SendLocationSelector(gameInfo, selectedSeason: season, cancellationToken: cancellationToken);
 
-            message = await SendInitMessage(gameInfo, cancellationToken);
+            return ActionResult.Ok();
         }
 
-        return message;
+        return ActionResult.Error(Shared.Text.SomethingWrongMessage);
+    }
+
+    private async Task<Message> SendLocationSelector(GameInfo gameInfo, bool deletePrev = false,
+        string additionalMessage = "", Season selectedSeason = Season.S1, CancellationToken cancellationToken = default)
+    {
+        var allLocations = await _db.Locations.GetAll(cancellationToken);
+
+        var keyboard = GetSelectionButtons(allLocations, selectedSeason);
+
+        return await UpdateMessage(gameInfo, Shared.Text.SelectLocationMessage, keyboard, deletePrev, additionalMessage, cancellationToken);
     }
 }

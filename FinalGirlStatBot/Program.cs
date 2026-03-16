@@ -5,6 +5,7 @@ using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.Services;
 using FinalGirlStatBot.Services.UserActionHandlers;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
@@ -33,7 +34,13 @@ builder.Host
 
         services.AddHostedService<TelegramPollingService>();
 
-        services.AddDbContext<FGStatsContext>();
+        services.AddDbContextFactory<FGStatsContext>(options =>
+        {
+            var dbConfig = context.Configuration.GetSection(DbConfiguration.Configuration).Get<DbConfiguration>();
+            options.UseNpgsql($"Host={dbConfig!.Host};Port={dbConfig.Port};Database={dbConfig.DbName};"
+                             + $"Username={dbConfig.Username};Password={dbConfig.Password};"
+                             + "SSL Mode=Require;Pooling=true;");
+        });
 
         services.AddTransient<IUserRepository, UserRepository>();
         services.AddTransient<IGameRepository, GameRepository>();
@@ -41,6 +48,11 @@ builder.Host
         services.AddTransient<IKillerRepository, KillerRepository>();
         services.AddTransient<ILocationRepository, LocationRepository>();
         services.AddTransient<IFGStatsUnitOfWork, FGStatsUnitOfWork>();
+
+        // Admin services
+        services.Configure<AdminConfiguration>(context.Configuration.GetSection(AdminConfiguration.Configuration));
+        services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IAdminCommandService, AdminCommandService>();
 
         services.AddControllers();
 

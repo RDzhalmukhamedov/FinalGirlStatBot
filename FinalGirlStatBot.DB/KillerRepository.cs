@@ -1,44 +1,51 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
-using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinalGirlStatBot.DB;
 
 public class KillerRepository : IKillerRepository
 {
-    private readonly FGStatsContext _context;
+    private readonly IDbContextFactory<FGStatsContext> _contextFactory;
 
-    public KillerRepository(FGStatsContext fgStatsContext)
+    public KillerRepository(IDbContextFactory<FGStatsContext> contextFactory)
     {
-        _context = fgStatsContext;
+        _contextFactory = contextFactory;
     }
 
-    public async Task<Killer?> GetById(int id, CancellationToken stoppingToken)
+    public async Task<KillerDto?> GetById(int id, CancellationToken cancellationToken = default)
     {
-        return await _context.Killers.FindAsync(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var killer = await context.Killers.AsNoTracking().FirstOrDefaultAsync(k => k.Id == id, cancellationToken);
+
+        return killer?.ToDto();
     }
 
-    public async Task<List<Killer>> GetAll(CancellationToken stoppingToken)
+    public async Task<IEnumerable<KillerDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _context.Killers.ToListAsync(stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await context.Killers.AsNoTracking().OrderBy(k => k.Id).ToListAsync(cancellationToken)).ToDtos();
     }
 
-    public async Task Add(Killer killer, CancellationToken stoppingToken)
+    public async Task<int> Add(KillerDto killer, CancellationToken cancellationToken = default)
     {
-        await _context.Killers.AddAsync(killer, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = killer.ToEntity();
+        await context.Killers.AddAsync(entity, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return entity.Id;
     }
 
-    public void Update(Killer killer)
+    public async Task Delete(int id, CancellationToken cancellationToken = default)
     {
-        _context.Killers.Update(killer);
-    }
-
-    public async Task Delete(int id, CancellationToken stoppingToken)
-    {
-        var killer = await GetById(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var killer = await context.Killers.FindAsync(id, cancellationToken);
         if (killer is not null)
         {
-            _context.Killers.Remove(killer);
+            context.Killers.Remove(killer);
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

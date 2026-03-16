@@ -1,14 +1,13 @@
-﻿using FinalGirlStatBot.DB.Domain;
+﻿using FinalGirlStatBot.DB.DTOs;
 
 namespace FinalGirlStatBot.DB.Abstract;
 
-public interface IUserRepository : IRepository<User>
+public interface IUserRepository : IRepository<UserDto>
 {
-    Task<User?> GetByChatId(long chatId, CancellationToken stoppingToken);
+    Task<UserDto?> GetByChatId(long chatId, CancellationToken stoppingToken);
 
-    Task<User?> GetByUserId(string userId, CancellationToken stoppingToken);
+    Task<UserDto?> GetByUserId(string userId, CancellationToken stoppingToken);
 
-    Task<User> CreateIfNotExist(long chatId, string userId, CancellationToken stoppingToken);
+    Task<UserDto> CreateIfNotExist(long chatId, string? userId, CancellationToken stoppingToken);
 
-    //Task<List<User>> GetUsersWithSubscriptions(CancellationToken stoppingToken);
 }

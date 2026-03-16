@@ -1,7 +1,7 @@
-﻿using FinalGirlStatBot.DB.Domain;
+﻿using FinalGirlStatBot.DB.DTOs;
 
 namespace FinalGirlStatBot.DB.Abstract;
 
-public interface IGirlRepository : IRepository<Girl>
+public interface IGirlRepository : IRepository<GirlDto>
 {
 }

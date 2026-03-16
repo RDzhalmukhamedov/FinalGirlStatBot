@@ -2,9 +2,8 @@
 
 public interface IRepository<T> where T : class
 {
-    Task<List<T>> GetAll(CancellationToken stoppingToken);
+    Task<IEnumerable<T>> GetAll(CancellationToken stoppingToken);
     Task<T?> GetById(int id, CancellationToken stoppingToken);
-    Task Add(T entity, CancellationToken stoppingToken);
-    void Update(T entity);
+    Task<int> Add(T entity, CancellationToken stoppingToken);
     Task Delete(int id, CancellationToken stoppingToken);
 }

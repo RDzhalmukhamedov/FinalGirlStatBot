@@ -2,7 +2,7 @@
 
 namespace FinalGirlStatBot;
 
-public static class Extensions
+public static class ServiceProviderExtensions
 {
     public static T GetConfiguration<T>(this IServiceProvider serviceProvider)
         where T : class

@@ -1,7 +1,6 @@
 ﻿using System.Collections.Concurrent;
+using FinalGirlStatBot.DB.DTOs;
 using FinalGirlStatBot.DB.Domain;
-using Game = FinalGirlStatBot.DB.Domain.Game;
-using Location = FinalGirlStatBot.DB.Domain.Location;
 
 namespace FinalGirlStatBot.Services;
 
@@ -9,19 +8,19 @@ public class GameManager
 {
     private readonly ConcurrentDictionary<long, GameInfo> ActiveGames = new();
 
-    public (bool, Game?) StartNewGame(User user)
+    public GameInfo StartNewGame(UserDto user)
     {
-        var newGame = new Game() { User = user, DatePlayed = DateTime.UtcNow };
-        var newInfo = new GameInfo() { Game = newGame, State = GameState.Init, ChatId = user.ChatId };
-        var success = ActiveGames.TryAdd(user.ChatId, newInfo);
-        ActiveGames.TryGetValue(user.ChatId, out newInfo);
+        var gameInfo = CreateGameInfoIfNotExsist(user.ChatId);
 
-        return (success, newInfo?.Game);
+        var newGame = new GameDto() { Result = ResultType.Unknown, DatePlayed = DateTime.UtcNow, User = user };
+        gameInfo.Game = newGame;
+
+        return gameInfo;
     }
 
-    public (bool, Game?) FinishGame(long chatId, ResultType result)
+    public (bool, GameDto?) SetGameResult(long chatId, ResultType result)
     {
-        var success = ActiveGames.TryRemove(chatId, out var currentGame);
+        var success = ActiveGames.TryGetValue(chatId, out var currentGame);
 
         if (success && currentGame?.Game is not null)
         {
@@ -31,13 +30,30 @@ public class GameManager
         return (success, currentGame?.Game);
     }
 
-    public bool SetGirl(long chatId, Girl girl)
+    public bool UpdateGameId(GameInfo gameInfo, int id)
     {
-        var success = ActiveGames.TryGetValue(chatId, out var currentGame);
-
-        if (success && currentGame?.Game is not null)
+        if (gameInfo.Game is not null)
         {
-            currentGame.Game.Girl = girl;
+            gameInfo.Game.Id = id;
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool ResetGame(long chatId)
+    {
+        var gameInfo = CreateGameInfoIfNotExsist(chatId);
+        gameInfo.Game = null;
+        gameInfo.PendingDeleteGame = false;
+        return true;
+    }
+
+    public bool SetGirl(GameInfo gameInfo, GirlDto? girl)
+    {
+        if (gameInfo.Game is not null)
+        {
+            gameInfo.Game.Girl = girl;
 
             return true;
         }
@@ -45,13 +61,11 @@ public class GameManager
         return false;
     }
 
-    public bool SetKiller(long chatId, Killer killer)
+    public bool SetKiller(GameInfo gameInfo, KillerDto? killer)
     {
-        var success = ActiveGames.TryGetValue(chatId, out var currentGame);
-
-        if (success && currentGame?.Game is not null)
+        if (gameInfo.Game is not null)
         {
-            currentGame.Game.Killer = killer;
+            gameInfo.Game.Killer = killer;
 
             return true;
         }
@@ -59,13 +73,11 @@ public class GameManager
         return false;
     }
 
-    public bool SetLocation(long chatId, Location location)
+    public bool SetLocation(GameInfo gameInfo, LocationDto? location)
     {
-        var success = ActiveGames.TryGetValue(chatId, out var currentGame);
-
-        if (success && currentGame?.Game is not null)
+        if (gameInfo.Game is not null)
         {
-            currentGame.Game.Location = location;
+            gameInfo.Game.Location = location;
 
             return true;
         }
@@ -73,24 +85,60 @@ public class GameManager
         return false;
     }
 
-    public GameInfo? GetGameInfo(long chatId)
+    public bool SetFromOtherGame(GameInfo currentGameInfo, GameDto? gameFrom)
     {
-        var success = ActiveGames.TryGetValue(chatId, out var currentGame);
+        if (gameFrom is null) return false;
 
-        return currentGame;
+        var success = SetGirl(currentGameInfo, gameFrom.Girl);
+        success &= SetKiller(currentGameInfo, gameFrom.Killer);
+        success &= SetLocation(currentGameInfo, gameFrom.Location);
+
+        return success;
     }
 
-    public void DeleteGame(long chatId)
+    public void MarkGameToDelete(GameInfo gameInfo, GameDto gameToDelete)
     {
-        ActiveGames.TryRemove(chatId, out var _);
+        gameInfo.Game = gameToDelete;
+        gameInfo.PendingDeleteGame = true;
     }
 
-    public (bool, GameInfo?) CreateStatsDummy(User user)
+    public GameInfo GetGameInfo(long chatId)
     {
-        var newInfo = new GameInfo() { State = GameState.Stats, ChatId = user.ChatId };
-        var success = ActiveGames.TryAdd(user.ChatId, newInfo);
-        ActiveGames.TryGetValue(user.ChatId, out newInfo);
+        return CreateGameInfoIfNotExsist(chatId);
+    }
 
-        return (success, newInfo);
+    public bool TransitionToState(long chatId, GameState newState)
+    {
+        var gameInfo = GetGameInfo(chatId);
+        if (gameInfo == null)
+            return false;
+
+        TransitionToState(gameInfo, newState);
+        return true;
+    }
+
+    public bool TransitionToState(GameInfo gameInfo, GameState newState)
+    {
+        StateTransitionValidator.ValidateTransition(gameInfo.State, newState);
+        gameInfo.State = newState;
+        return true;
+    }
+
+    private GameInfo CreateGameInfoIfNotExsist(long chatId)
+    {
+        var exsist = ActiveGames.TryGetValue(chatId, out var gameInfo);
+        if (gameInfo is null)
+        {
+            exsist = false;
+            ActiveGames.TryRemove(chatId, out var _);
+        }
+        if (!exsist)
+        {
+            gameInfo = new GameInfo() { State = GameState.Init, ChatId = chatId };
+
+            ActiveGames.TryAdd(chatId, gameInfo);
+        }
+
+        return gameInfo!;
     }
 }

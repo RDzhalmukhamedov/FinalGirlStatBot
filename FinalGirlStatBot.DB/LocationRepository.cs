@@ -1,44 +1,51 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
-using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinalGirlStatBot.DB;
 
 public class LocationRepository : ILocationRepository
 {
-    private readonly FGStatsContext _context;
+    private readonly IDbContextFactory<FGStatsContext> _contextFactory;
 
-    public LocationRepository(FGStatsContext fgStatsContext)
+    public LocationRepository(IDbContextFactory<FGStatsContext> contextFactory)
     {
-        _context = fgStatsContext;
+        _contextFactory = contextFactory;
     }
 
-    public async Task<Location?> GetById(int id, CancellationToken stoppingToken)
+    public async Task<LocationDto?> GetById(int id, CancellationToken cancellationToken = default)
     {
-        return await _context.Locations.FindAsync(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var location = await context.Locations.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
+
+        return location?.ToDto();
     }
 
-    public async Task<List<Location>> GetAll(CancellationToken stoppingToken)
+    public async Task<IEnumerable<LocationDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _context.Locations.ToListAsync(stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await context.Locations.AsNoTracking().OrderBy(l => l.Id).ToListAsync(cancellationToken)).ToDtos();
     }
 
-    public async Task Add(Location location, CancellationToken stoppingToken)
+    public async Task<int> Add(LocationDto location, CancellationToken cancellationToken = default)
     {
-        await _context.Locations.AddAsync(location, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = location.ToEntity();
+        await context.Locations.AddAsync(entity, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return entity.Id;
     }
 
-    public void Update(Location location)
+    public async Task Delete(int id, CancellationToken cancellationToken = default)
     {
-        _context.Locations.Update(location);
-    }
-
-    public async Task Delete(int id, CancellationToken stoppingToken)
-    {
-        var location = await GetById(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var location = await context.Locations.FindAsync([id], cancellationToken);
         if (location is not null)
         {
-            _context.Locations.Remove(location);
+            context.Locations.Remove(location);
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

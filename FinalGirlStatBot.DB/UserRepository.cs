@@ -1,66 +1,84 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinalGirlStatBot.DB;
 
 public class UserRepository : IUserRepository
 {
-    private readonly FGStatsContext _context;
+    private readonly IDbContextFactory<FGStatsContext> _contextFactory;
 
-    public UserRepository(FGStatsContext fgStatsContext)
+    public UserRepository(IDbContextFactory<FGStatsContext> contextFactory)
     {
-        _context = fgStatsContext;
+        _contextFactory = contextFactory;
     }
 
-    public async Task<User?> GetById(int id, CancellationToken stoppingToken)
+    public async Task<UserDto?> GetById(int id, CancellationToken cancellationToken = default)
     {
-        return await _context.Users.FindAsync(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        return user?.ToDto();
     }
 
-    public async Task<User?> GetByChatId(long chatId, CancellationToken stoppingToken)
+    public async Task<UserDto?> GetByChatId(long chatId, CancellationToken cancellationToken = default)
     {
-        return await _context.Users.AsQueryable().FirstOrDefaultAsync(u => u.ChatId == chatId, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.ChatId == chatId, cancellationToken);
+        return user?.ToDto();
     }
 
-    public async Task<User?> GetByUserId(string userId, CancellationToken stoppingToken)
+    public async Task<UserDto?> GetByUserId(string userId, CancellationToken cancellationToken = default)
     {
-        return await _context.Users.AsQueryable().FirstOrDefaultAsync(u => u.UserId == userId, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+        return user?.ToDto();
     }
 
-    public async Task<List<User>> GetAll(CancellationToken stoppingToken)
+    public async Task<IEnumerable<UserDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _context.Users.ToListAsync(stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await context.Users.AsNoTracking().ToListAsync(cancellationToken)).ToDtos();
     }
 
-    public async Task Add(User user, CancellationToken stoppingToken)
+    public async Task<int> Add(UserDto user, CancellationToken cancellationToken = default)
     {
-        await _context.Users.AddAsync(user, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = user.ToEntity();
+        await context.Users.AddAsync(entity, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return entity.Id;
     }
 
-    public async Task<User> CreateIfNotExist(long chatId, string userId, CancellationToken stoppingToken)
+    public async Task<UserDto> CreateIfNotExist(long chatId, string? userId, CancellationToken cancellationToken = default)
     {
-        var user = await GetByChatId(chatId, stoppingToken);
+        // TODO обновление userId добавить
+        // if ((user.UserId is null || !user.UserId.Equals(username)) && username is not null)
+        // {
+        //     user.UserId = username;
+        //     await _db.Users.Update(user, cancellationToken);
+        // }
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.ChatId == chatId, cancellationToken);
         if (user is null)
         {
             user = new User() { ChatId = chatId, UserId = userId };
-            await Add(user, stoppingToken);
+            await context.Users.AddAsync(user, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
-
-        return user;
+        return user.ToDto();
     }
 
-    public void Update(User user)
+    public async Task Delete(int id, CancellationToken cancellationToken = default)
     {
-        _context.Users.Update(user);
-    }
-
-    public async Task Delete(int id, CancellationToken stoppingToken)
-    {
-        var user = await GetById(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.Users.FindAsync(id, cancellationToken);
         if (user is not null)
         {
-            _context.Users.Remove(user);
+            context.Users.Remove(user);
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

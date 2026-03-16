@@ -15,24 +15,25 @@ public class Game
 
     public DateTime DatePlayed { get; set; }
 
-    public string? ShortInfo {  get; set; }
+    public string? ShortInfo { get; set; }
 
     [Required]
-    public Girl? Girl { get; set; }
+    public int GirlId { get; set; }
 
     [Required]
-    public Killer? Killer { get; set; }
+    public int KillerId { get; set; }
 
     [Required]
-    public Location? Location { get; set; }
+    public int LocationId { get; set; }
 
     [Required]
-    public User? User { get; set; }
+    public int UserId { get; set; }
 
-    public bool ReadyToStart => Girl is not null && Killer is not null && Location is not null;
+    public virtual Girl? Girl { get; set; }
 
-    public override string ToString()
-    {
-        return $"👩<b>{ Girl?.Name ?? "???" }</b> vs 🔪<b>{ Killer?.Name ?? "???"}</b> (🏠{ Location?.Name ?? "???"})";
-    }
+    public virtual Killer? Killer { get; set; }
+
+    public virtual Location? Location { get; set; }
+
+    public virtual User? User { get; set; }
 }

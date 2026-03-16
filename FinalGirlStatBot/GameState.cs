@@ -3,9 +3,12 @@
 public enum GameState
 {
     Init = 0,
-    SelectGirl = 1,
-    SelectKiller = 2,
-    SelectLocation = 3,
-    GameInProgress = 4,
-    Stats = 100,
+    CreatingGame = 1,
+    SelectGirl = 2,
+    SelectKiller = 3,
+    SelectLocation = 4,
+    GameInProgress = 5,
+    GameCompleted = 6,
+    ViewingStats = 7,
+    DeleteGame = 8,
 }

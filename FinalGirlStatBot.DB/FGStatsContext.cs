@@ -1,13 +1,10 @@
 ﻿using FinalGirlStatBot.DB.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace FinalGirlStatBot.DB;
 
 public sealed class FGStatsContext : DbContext
 {
-    private readonly DbConfiguration _config;
-
     public DbSet<Game> Games { get; set; } = null!;
 
     public DbSet<User> Users { get; set; } = null!;
@@ -18,14 +15,11 @@ public sealed class FGStatsContext : DbContext
 
     public DbSet<Location> Locations { get; set; } = null!;
 
-    public FGStatsContext(IOptions<DbConfiguration> configuration)
+    public FGStatsContext(DbContextOptions<FGStatsContext> options) : base(options)
     {
-        _config = configuration.Value;
-    }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder.UseNpgsql($"Host={_config.Host};Port={_config.Port};Database={_config.DbName};"
-                                 + $"Username={_config.Username};Password={_config.Password}");
+        // Явно отключаем lazy loading и change tracking proxy
+        ChangeTracker.LazyLoadingEnabled = false;
+        ChangeTracker.AutoDetectChangesEnabled = false;
+        ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
     }
 }

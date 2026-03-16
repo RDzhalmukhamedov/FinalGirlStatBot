@@ -1,44 +1,51 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
-using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinalGirlStatBot.DB;
 
 public class GirlRepository : IGirlRepository
 {
-    private readonly FGStatsContext _context;
+    private readonly IDbContextFactory<FGStatsContext> _contextFactory;
 
-    public GirlRepository(FGStatsContext fgStatsContext)
+    public GirlRepository(IDbContextFactory<FGStatsContext> contextFactory)
     {
-        _context = fgStatsContext;
+        _contextFactory = contextFactory;
     }
 
-    public async Task<Girl?> GetById(int id, CancellationToken stoppingToken)
+    public async Task<GirlDto?> GetById(int id, CancellationToken cancellationToken = default)
     {
-        return await _context.Girls.FindAsync(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var girl = await context.Girls.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+
+        return girl?.ToDto();
     }
 
-    public async Task<List<Girl>> GetAll(CancellationToken stoppingToken)
+    public async Task<IEnumerable<GirlDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _context.Girls.ToListAsync(stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return (await context.Girls.AsNoTracking().OrderBy(g => g.Id).ToListAsync(cancellationToken)).ToDtos();
     }
 
-    public async Task Add(Girl girl, CancellationToken stoppingToken)
+    public async Task<int> Add(GirlDto girl, CancellationToken cancellationToken = default)
     {
-        await _context.Girls.AddAsync(girl, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = girl.ToEntity();
+        await context.Girls.AddAsync(entity, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return entity.Id;
     }
 
-    public void Update(Girl girl)
+    public async Task Delete(int id, CancellationToken cancellationToken = default)
     {
-        _context.Girls.Update(girl);
-    }
-
-    public async Task Delete(int id, CancellationToken stoppingToken)
-    {
-        var girl = await GetById(id, stoppingToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var girl = await context.Girls.FindAsync(id, cancellationToken);
         if (girl is not null)
         {
-            _context.Girls.Remove(girl);
+            context.Girls.Remove(girl);
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

@@ -1,10 +1,8 @@
-﻿using FinalGirlStatBot.DB.Domain;
+﻿using FinalGirlStatBot.DB.DTOs;
 
 namespace FinalGirlStatBot.DB.Abstract;
 
-public interface IGameRepository : IRepository<Game>
+public interface IGameRepository : IRepository<GameDto>
 {
-    Task<List<Game>> GetByUser(long chatId, CancellationToken stoppingToken);
-
-    Task<Game> GetLastForUser(long chatId, CancellationToken stoppingToken);
+    Task<IEnumerable<GameDto>> GetByUser(long chatId, CancellationToken stoppingToken);
 }

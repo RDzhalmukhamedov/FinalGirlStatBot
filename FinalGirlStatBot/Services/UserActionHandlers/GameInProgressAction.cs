@@ -1,67 +1,57 @@
-﻿using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
-public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
+public class GameInProgressAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager)
+    : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
+    public override async Task<Message> SendActionMessage
+        (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        var message = data switch
+        return await UpdateMessage(gameInfo, $"{Shared.Text.ShootInProgressMessage}\n{gameInfo.Game}\n{Shared.Text.WriteResultsMessage}",
+                                   Shared.Buttons.ResultKeyboard, deletePrev, additionalMessage, cancellationToken);
+    }
+
+    public override async Task<ActionResult> ProcessCallback
+        (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null)
+    {
+        var message = userAction switch
         {
-            Shared.Text.WinCallback => SetWin(gameInfo, cancellationToken),
-            Shared.Text.LoseCallback => SetLose(gameInfo, cancellationToken),
-            Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
+            Shared.Text.WinCallback => await SetWin(gameInfo, cancellationToken),
+            Shared.Text.LoseCallback => await SetLose(gameInfo, cancellationToken),
+            Shared.Text.ResetCallback => await Reset(gameInfo, cancellationToken),
+            _ => ActionResult.Error(),
         };
 
-        return await message;
+        return message;
     }
 
-    private async Task<Message> SetWin(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<ActionResult> SetWin(GameInfo gameInfo, CancellationToken cancellationToken)
     {
-        return await SetGameResult(gameInfo, ResultType.Win,
-            $"{Shared.Text.ShootEndedMessage}\n{gameInfo.Game}\n{Shared.Text.WinCongratsMessage}", cancellationToken);
+        return await SetGameResult(gameInfo, ResultType.Win, cancellationToken);
     }
 
-    private async Task<Message> SetLose(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<ActionResult> SetLose(GameInfo gameInfo, CancellationToken cancellationToken)
     {
-        return await SetGameResult(gameInfo, ResultType.Lose,
-            $"{Shared.Text.ShootEndedMessage} {Shared.Text.KillerWinsMessage}\n{gameInfo.Game}\n{Shared.Text.LoseCongratsMessage}", cancellationToken);
+        return await SetGameResult(gameInfo, ResultType.Lose, cancellationToken);
     }
 
-    private async Task<Message> SetGameResult(GameInfo gameInfo, ResultType result, string messageText, CancellationToken cancellationToken)
+    private async Task<ActionResult> SetGameResult(GameInfo gameInfo, ResultType result, CancellationToken cancellationToken)
     {
-        var (success, game) = _gameManager.FinishGame(gameInfo.ChatId, result);
-        var text = messageText;
+        var (success, gameDto) = _gameManager.SetGameResult(gameInfo.ChatId, result);
 
-        if (success)
+        if (success && gameDto is not null)
         {
-            await _db.Games.Add(game, cancellationToken);
-            await _db.Commit(cancellationToken);
+            var id = await _db.Games.Add(gameDto, cancellationToken);
+            _gameManager.UpdateGameId(gameInfo, id);
+            return ActionResult.Ok(GameState.GameCompleted);
         }
         else
         {
-            text = Shared.Text.SomethingWrongMessage;
+            return ActionResult.Error(Shared.Text.SomethingWrongMessage);
         }
-
-        Shared.Buttons.RepeatGame.CallbackData = $"{Shared.Text.RepeatGameCallback}-{game?.Id}";
-        InlineKeyboardButton[][] keyboard =
-        [
-            [Shared.Buttons.RepeatGame]
-        ];
-
-        await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: text,
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: keyboard,
-            cancellationToken: cancellationToken);
-
-        return message;
     }
 }

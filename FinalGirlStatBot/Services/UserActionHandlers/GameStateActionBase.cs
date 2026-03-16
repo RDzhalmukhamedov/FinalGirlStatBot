@@ -1,5 +1,6 @@
-﻿using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.DB.DTOs;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -12,111 +13,120 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
     protected readonly ITelegramBotClient _botClient = botClient;
     protected readonly GameManager _gameManager = gameManager;
 
-    public abstract Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null);
+    public abstract Task<ActionResult> ProcessCallback
+        (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null);
 
-    protected async Task<Message> SendInitMessage(GameInfo gameInfo, CancellationToken cancellationToken, string text = "")
+    public abstract Task<Message> SendActionMessage
+        (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default);
+
+    protected async Task<Message> UpdateMessage(GameInfo gameInfo, string text, InlineKeyboardButton[][]? keyboard,
+        bool deletePrev = false, string additionalText = "", CancellationToken cancellationToken = default)
     {
-        var keyboard = gameInfo.ReadyToStart ? Shared.Buttons.InitKeyboardReadyToStart : Shared.Buttons.InitKeyboard;
-
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: string.IsNullOrEmpty(text) ? $"{Shared.Text.SelectionQuestionMessage}\n{gameInfo.Game}" : text,
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: keyboard,
-            cancellationToken: cancellationToken);
-
-        gameInfo.MessageId = message.Id;
-
-        return message;
-    }
-
-    protected async Task<Message> SendSelectionMessage(GameInfo gameInfo, string text, InlineKeyboardButton[][] keyboard, CancellationToken cancellationToken)
-    {
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: text,
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: keyboard,
-            cancellationToken: cancellationToken);
-
-        gameInfo.MessageId = message.Id;
-
-        return message;
-    }
-
-    protected async Task<Message> SendGirlSelector(GameInfo gameInfo, CancellationToken cancellationToken, Season selectedSeason = Season.S1)
-    {
-        var allGirls = await _db.Girls.GetAll(cancellationToken);
-
-        gameInfo.State = GameState.SelectGirl;
-
-        var girlsBySeason = allGirls.GroupBy(g => g.Season).ToDictionary(g => g.Key, g => g.ToList());
-        var chunkedSeasonGirls = girlsBySeason[selectedSeason].Chunk(2);
-        var keyboard = Array.Empty<InlineKeyboardButton[]>();
-        foreach (var girls in chunkedSeasonGirls)
+        if (deletePrev && gameInfo.MessageId is not null)
         {
-            keyboard = keyboard.Append(girls.Select(go => new InlineKeyboardButton(go.Name, go.Id.ToString())).ToArray()).ToArray();
+            await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
+            gameInfo.MessageId = null;
         }
 
-        keyboard = keyboard.Append(GetSeasonButtons(girlsBySeason.Keys, selectedSeason)).ToArray();
-
-        return await SendSelectionMessage(gameInfo, Shared.Text.SelectGirlMessage, keyboard, cancellationToken);
-    }
-
-    protected async Task<Message> SendKillerSelector(GameInfo gameInfo, CancellationToken cancellationToken, Season selectedSeason = Season.S1)
-    {
-        var allKillers = await _db.Killers.GetAll(cancellationToken);
-
-        gameInfo.State = GameState.SelectKiller;
-
-        var killersBySeason = allKillers.GroupBy(g => g.Season).ToDictionary(g => g.Key, g => g.ToList());
-        var selectedSeasonKillers = killersBySeason[selectedSeason];
-        var keyboard = Array.Empty<InlineKeyboardButton[]>();
-        foreach (var killer in selectedSeasonKillers)
+        if (!string.IsNullOrEmpty(additionalText))
         {
-            keyboard = keyboard.Append([(killer.Name, killer.Id.ToString())]).ToArray();
+            await _botClient.SendMessage(
+                chatId: gameInfo.ChatId,
+                text: additionalText,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                cancellationToken: cancellationToken);
         }
 
-        keyboard = keyboard.Append(GetSeasonButtons(killersBySeason.Keys, selectedSeason)).ToArray();
+        if (gameInfo.MessageId is not null)
+        {
+            var message = await _botClient.EditMessageText(
+                chatId: gameInfo.ChatId,
+                messageId: gameInfo.MessageId.Value,
+                text: text,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                cancellationToken: cancellationToken);
 
-        return await SendSelectionMessage(gameInfo, Shared.Text.SelectKillerMessage, keyboard, cancellationToken);
+            if (keyboard is not null)
+            {
+                message = await _botClient.EditMessageReplyMarkup(
+                    chatId: gameInfo.ChatId,
+                    messageId: gameInfo.MessageId.Value,
+                    replyMarkup: keyboard,
+                    cancellationToken: cancellationToken);
+            }
+
+            return message;
+        }
+        else
+        {
+            var message = await _botClient.SendMessage(
+                chatId: gameInfo.ChatId,
+                text: text,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                replyMarkup: keyboard,
+                cancellationToken: cancellationToken);
+
+            gameInfo.MessageId = message.Id;
+            return message;
+        }
     }
 
-    protected async Task<Message> SendLocationSelector(GameInfo gameInfo, CancellationToken cancellationToken, Season selectedSeason = Season.S1)
+    protected async Task<ActionResult> Reset(GameInfo gameInfo, CancellationToken cancellationToken = default, string additionalMessage = "")
     {
-        var allLocations = await _db.Locations.GetAll(cancellationToken);
-
-        gameInfo.State = GameState.SelectLocation;
-
-        var locationsBySeason = allLocations.GroupBy(g => g.Season).ToDictionary(g => g.Key, g => g.ToList());
-        var selectedSeasonLocations = locationsBySeason[selectedSeason];
-        var keyboard = Array.Empty<InlineKeyboardButton[]>();
-        foreach (var location in selectedSeasonLocations)
+        if (string.IsNullOrEmpty(additionalMessage))
         {
-            keyboard = keyboard.Append([(location.Name, location.Id.ToString())]).ToArray();
+            var gameString = gameInfo.Game?.ToString();
+            additionalMessage = $"{gameString}\n{Shared.Text.GameResetedMessage}";
+        }
+        _gameManager.ResetGame(gameInfo.ChatId);
+
+        if (gameInfo.MessageId is not null)
+            await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
+
+        gameInfo.MessageId = null;
+
+        return ActionResult.Ok(GameState.Init, $"{additionalMessage}");
+    }
+
+
+    protected async Task<ActionResult> FillRepeatGameInfo(GameInfo gameInfo, IEnumerable<string> idStr, CancellationToken cancellationToken)
+    {
+        if (int.TryParse(idStr.First(), out var gameId))
+        {
+            var gameToRepeat = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken)).FirstOrDefault(g => g?.Id == gameId, null);
+            if (gameToRepeat is not null)
+            {
+                var user = await _db.Users.CreateIfNotExist(gameInfo.ChatId, null, cancellationToken);
+                gameInfo = _gameManager.StartNewGame(user);
+                _gameManager.SetFromOtherGame(gameInfo, gameToRepeat);
+
+                return ActionResult.Ok(GameState.CreatingGame);
+            }
         }
 
-        keyboard = keyboard.Append(GetSeasonButtons(locationsBySeason.Keys, selectedSeason)).ToArray();
-
-        return await SendSelectionMessage(gameInfo, Shared.Text.SelectLocationMessage, keyboard, cancellationToken);
+        return ActionResult.Error();
     }
 
-    protected async Task<Message> Reset(GameInfo gameInfo, CancellationToken cancellationToken)
+    protected static InlineKeyboardButton[][] GetSelectionButtons(IEnumerable<IBaseDto> entities, Season selectedSeason)
     {
-        _gameManager.DeleteGame(gameInfo.ChatId);
+        var seasons = entities.Select(g => g.Season).Distinct().Order();
+        var keyboard = GetEntitiesBySeasonButtons(entities, selectedSeason);
+        keyboard = keyboard.Append(GetSeasonButtons(seasons, selectedSeason)).ToArray();
 
-        await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
+        return keyboard;
+    }
 
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: $"{gameInfo.Game}\n{Shared.Text.GameResetedMessage}",
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: new ReplyKeyboardRemove(),
-            cancellationToken: cancellationToken);
+    private static InlineKeyboardButton[][] GetEntitiesBySeasonButtons(IEnumerable<IBaseDto> entities, Season selectedSeason)
+    {
+        var bySeason = entities.GroupBy(g => g.Season).ToDictionary(g => g.Key, g => g.ToList());
+        var chunked = bySeason[selectedSeason].Chunk(2);
+        var keyboard = Array.Empty<InlineKeyboardButton[]>();
+        foreach (var chunk in chunked)
+        {
+            keyboard = keyboard.Append(chunk.Select(e => new InlineKeyboardButton(e.Name, e.Id.ToString())).ToArray()).ToArray();
+        }
 
-        return message;
+        return keyboard;
     }
 
     private static InlineKeyboardButton[] GetSeasonButtons(IEnumerable<Season> seasons, Season selectedSeason)
@@ -124,8 +134,25 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
         return seasons
             .Select
             (
-                season => new InlineKeyboardButton(season == selectedSeason ? $"•{season.ToString()}•" : season.ToString(), season.ToString())
+                season => new InlineKeyboardButton(season == selectedSeason ? $"•{season}•" : season.ToString(), season.ToString())
             )
             .ToArray();
+    }
+
+    protected string GetFullGameInfoString(GameDto? game)
+    {
+        if (game is null) return string.Empty;
+
+        var dateString = DateOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeFromUtc(game.DatePlayed, TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time")))
+            .ToString("dd/MM/yyyy");
+        var resultString = game.Result switch
+        {
+            ResultType.Win => Shared.Text.Win,
+            ResultType.Lose => Shared.Text.Lose,
+            _ => Shared.Text.Unknown,
+        };
+
+        return $"{game}\n      <b>{resultString} ({dateString})</b>";
     }
 }

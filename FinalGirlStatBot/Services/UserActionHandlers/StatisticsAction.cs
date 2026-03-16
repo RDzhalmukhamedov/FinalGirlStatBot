@@ -1,4 +1,6 @@
-﻿using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.DB.Domain;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -6,25 +8,48 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 
-public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager) : GameStateActionBase(dbConnection, botClient, gameManager)
+public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient botClient, GameManager gameManager)
+    : GameStateActionBase(dbConnection, botClient, gameManager)
 {
-    public override async Task<Message> DoAction(GameInfo gameInfo, string data, CancellationToken cancellationToken, dynamic? payload = null)
+    public override async Task<Message> SendActionMessage
+        (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        var message = await (data switch
+        var games = (await _db.Games.GetByUser(chatId: gameInfo.ChatId, cancellationToken)).ToList();
+        var text = BuildMainStatsString(games);
+        var keyboard = games.Count > 0 ? Shared.Buttons.StatsKeyboard : null;
+
+        return await UpdateMessage(gameInfo, text, keyboard, deletePrev, additionalMessage, cancellationToken);
+    }
+
+    public override async Task<ActionResult> ProcessCallback
+        (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null)
+    {
+        var message = await (userAction switch
         {
             Shared.Text.GirlStatsCallback => StatsByGirl(gameInfo, cancellationToken),
             Shared.Text.KillerStatsCallback => StatsByKiller(gameInfo, cancellationToken),
             Shared.Text.LocationStatsCallback => StatsByLocation(gameInfo, cancellationToken),
-            Shared.Text.HistoryStatsCallback => GamesHistory(gameInfo, cancellationToken, payload),
+            Shared.Text.HistoryStatsCallback => GamesHistory(gameInfo, payload, cancellationToken),
             Shared.Text.ResetCallback => Reset(gameInfo, cancellationToken),
+            _ => ActionResult.Error(),
         });
-
-        gameInfo.MessageId = message.Id;
 
         return message;
     }
 
-    private async Task<Message> StatsByGirl(GameInfo gameInfo, CancellationToken cancellationToken)
+    private string BuildMainStatsString(List<GameDto> games)
+    {
+        var wins = games.Count(g => g.Result == ResultType.Win);
+        var loses = games.Count(g => g.Result == ResultType.Lose);
+        var unknown = games.Count - (wins + loses);
+        var unknownString = unknown > 0 ? $" ({unknown} {Shared.Text.NoResultsCountMessage})" : "";
+        var winPercentage = Math.Round((double)wins * 100 / (games.Count - unknown), 2);
+        var percentageString = games.Count > 0 ? $"\n{Shared.Text.WinPercentageMessage} {winPercentage}% ({wins}/{loses})" : "";
+
+        return $"{Shared.Text.TotalGamesMessage} {games.Count}{unknownString}.{percentageString}";
+    }
+
+    private async Task<ActionResult> StatsByGirl(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
         StringBuilder sb = new();
         var gamesByGirl = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken))
@@ -36,24 +61,19 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             if (games.Value.Count > 0)
             {
-                var wins = games.Value.Where(g => g.Result == DB.Domain.ResultType.Win).Count();
-                var loses = games.Value.Where(g => g.Result == DB.Domain.ResultType.Lose).Count();
-                sb.AppendLine($"<b>{games.Value.First().Girl?.Name}</b>: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
+                var wins = games.Value.Count(g => g.Result == ResultType.Win);
+                var loses = games.Value.Count(g => g.Result == ResultType.Lose);
+                var winPercetage = Math.Round((double)wins * 100 / games.Value.Count);
+                sb.AppendLine($"<b>{games.Value.First().Girl?.Name}</b>: {GetGameCountString(games.Value.Count)} ({winPercetage}%, {wins}/{loses})\n");
             }
         }
 
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: sb.ToString(),
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: Shared.Buttons.StatsKeyboardGirl,
-            cancellationToken: cancellationToken);
+        await UpdateMessage(gameInfo, sb.ToString(), Shared.Buttons.StatsKeyboardGirl, cancellationToken: cancellationToken);
 
-        return message;
+        return ActionResult.Ok();
     }
 
-    private async Task<Message> StatsByKiller(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<ActionResult> StatsByKiller(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
         StringBuilder sb = new();
         var gamesByKiller = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken))
@@ -65,24 +85,19 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             if (games.Value.Count > 0)
             {
-                var wins = games.Value.Where(g => g.Result == DB.Domain.ResultType.Win).Count();
-                var loses = games.Value.Where(g => g.Result == DB.Domain.ResultType.Lose).Count();
-                sb.AppendLine($"<b>{games.Value.First().Killer?.Name}</b>: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
+                var wins = games.Value.Count(g => g.Result == ResultType.Win);
+                var loses = games.Value.Count(g => g.Result == ResultType.Lose);
+                var winPercetage = Math.Round((double)wins * 100 / games.Value.Count);
+                sb.AppendLine($"<b>{games.Value.First().Killer?.Name}</b>: {GetGameCountString(games.Value.Count)} ({winPercetage}%, {wins}/{loses})\n");
             }
         }
 
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: sb.ToString(),
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: Shared.Buttons.StatsKeyboardKiller,
-            cancellationToken: cancellationToken);
+        await UpdateMessage(gameInfo, sb.ToString(), Shared.Buttons.StatsKeyboardKiller, cancellationToken: cancellationToken);
 
-        return message;
+        return ActionResult.Ok();
     }
 
-    private async Task<Message> StatsByLocation(GameInfo gameInfo, CancellationToken cancellationToken)
+    private async Task<ActionResult> StatsByLocation(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
         StringBuilder sb = new();
         var gamesByLocation = (await _db.Games.GetByUser(chatId: gameInfo.ChatId, cancellationToken))
@@ -94,61 +109,65 @@ public class StatisticsAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             if (games.Value.Count > 0)
             {
-                var wins = games.Value.Where(g => g.Result == DB.Domain.ResultType.Win).Count();
-                var loses = games.Value.Where(g => g.Result == DB.Domain.ResultType.Lose).Count();
-                sb.AppendLine($"<b>{games.Value.First().Location?.Name}</b>: {games.Value.Count} игр ({Math.Round((double)wins * 100 / games.Value.Count)}%, {wins}/{loses})\n");
+                var wins = games.Value.Count(g => g.Result == ResultType.Win);
+                var loses = games.Value.Count(g => g.Result == ResultType.Lose);
+                var winPercetage = Math.Round((double)wins * 100 / games.Value.Count);
+                sb.AppendLine($"<b>{games.Value.First().Location?.Name}</b>: {GetGameCountString(games.Value.Count)} ({winPercetage}%, {wins}/{loses})\n");
             }
         }
 
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: sb.ToString(),
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: Shared.Buttons.StatsKeyboardLocation,
-            cancellationToken: cancellationToken);
+        await UpdateMessage(gameInfo, sb.ToString(), Shared.Buttons.StatsKeyboardLocation, cancellationToken: cancellationToken);
 
-        return message;
+        return ActionResult.Ok(null);
     }
 
-    private async Task<Message> GamesHistory(GameInfo gameInfo, CancellationToken cancellationToken, int? page = 1)
+    private async Task<ActionResult> GamesHistory(GameInfo gameInfo, IEnumerable<string> pageStr, CancellationToken cancellationToken = default)
     {
+        var page = 1;
+        var havePage = pageStr is not null && pageStr.Count() > 0 && int.TryParse(pageStr.First(), out page);
         StringBuilder sb = new();
-        var games = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken)).OrderByDescending(g => g.DatePlayed);
+        var gamesList = (await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken)).OrderByDescending(g => g.DatePlayed).ToList();
+        var totalPages = Math.Max(1, (gamesList.Count + 9) / 10);
+        var safePage = Math.Clamp(page, 1, totalPages);
+        var chunk = gamesList.Skip((safePage - 1) * 10).Take(10);
 
-        if (page is null) page = 1;
-
-        var pagedGames = games.Chunk(10);
-        foreach (var game in pagedGames.Skip(page.Value - 1).Take(1).First())
+        foreach (var game in chunk)
         {
-            var dateString = DateOnly.FromDateTime(
-                TimeZoneInfo.ConvertTimeFromUtc(game.DatePlayed, TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time")))
-                .ToString("dd/MM/yyyy");
-            var resultString = game.Result switch
-            {
-                DB.Domain.ResultType.Unknown => Shared.Text.Unknown,
-                DB.Domain.ResultType.Win => Shared.Text.Win,
-                DB.Domain.ResultType.Lose => Shared.Text.Lose,
-            };
-            sb.AppendLine($"{game}\n      <b>{resultString} ({dateString})</b>\n");
+            sb.AppendLine(GetFullGameInfoString(game));
+            sb.AppendLine($"            {Shared.Text.DeleteGame}: /delete{Shared.Text.Splitter}{game.Id}");
+            sb.AppendLine($"            {Shared.Text.RepeatGame}: /repeat{Shared.Text.Splitter}{game.Id}\n");
         }
 
         var keyboard = new List<InlineKeyboardButton>();
-        int i = 1;
-        foreach (var chunk in pagedGames)
+        for (int i = 1; i <= totalPages; i++)
         {
-            keyboard.Add(new InlineKeyboardButton(i == page ? $"•{i}•" : $"{i}", $"{Shared.Text.HistoryStatsCallback}-{i}"));
-            i++;
+            keyboard.Add(new InlineKeyboardButton(i == safePage ? $"•{i}•" : $"{i}", $"{Shared.Text.HistoryStatsCallback}{Shared.Text.Splitter}{i}"));
         }
 
-        if (gameInfo.MessageId is not null) await _botClient.DeleteMessage(gameInfo.ChatId, gameInfo.MessageId.Value, cancellationToken);
-        var message = await _botClient.SendMessage(
-            chatId: gameInfo.ChatId,
-            text: sb.ToString(),
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: pagedGames.Count() > 1 ? keyboard.Chunk(10).ToArray() : null,
-            cancellationToken: cancellationToken);
+        await UpdateMessage(gameInfo, sb.Length > 0 ? sb.ToString() : "", totalPages > 1 ? keyboard.Chunk(10).ToArray() : null, cancellationToken: cancellationToken);
 
-        return message;
+        return ActionResult.Ok();
+    }
+
+    private string GetGameCountString(int count)
+    {
+        // Получаем последнюю цифру и две последние цифры числа
+        int lastDigit = count % 10;
+        int lastTwoDigits = count % 100;
+
+        // Исключение для чисел от 11 до 14 (всегда "игр")
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 14)
+            return $"{count} игр";
+
+        // Для чисел, оканчивающихся на 1 (кроме 11)
+        if (lastDigit == 1)
+            return $"{count} игра";
+
+        // Для чисел, оканчивающихся на 2, 3, 4 (кроме 12-14)
+        if (lastDigit >= 2 && lastDigit <= 4)
+            return $"{count} игры";
+
+        // Во всех остальных случаях
+        return $"{count} игр";
     }
 }
