@@ -1,5 +1,6 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -43,9 +44,9 @@ public class SelectGirlAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
     private async Task<Message> SendGirlSelector(GameInfo gameInfo, bool deletePrev = false,
         string additionalMessage = "", Season selectedSeason = Season.S1, CancellationToken cancellationToken = default)
     {
-        var allGirls = await _db.Girls.GetAll(cancellationToken);
+        var girls = await GetGirlsForUser(gameInfo, cancellationToken);
 
-        var keyboard = GetSelectionButtons(allGirls, selectedSeason);
+        var keyboard = GetSelectionButtons(girls, selectedSeason);
 
         return await UpdateMessage(gameInfo, Shared.Text.SelectGirlMessage, keyboard, deletePrev, additionalMessage, cancellationToken);
     }

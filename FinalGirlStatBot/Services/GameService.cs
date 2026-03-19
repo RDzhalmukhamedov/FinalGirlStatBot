@@ -1,6 +1,7 @@
 ﻿using FinalGirlStatBot.Abstract;
 using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.Models;
 using FinalGirlStatBot.Services.UserActionHandlers;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -22,6 +23,18 @@ public class GameService(GameManager gameManager, IFGStatsUnitOfWork dbConnectio
         if (gameInfo is null) return;
 
         await CreateNewGame(user, cancellationToken);
+    }
+
+    public async Task StartCollection(Chat chatInfo, CancellationToken cancellationToken = default)
+    {
+        await GetOrCreateUser(chatInfo.Id, chatInfo.Username, cancellationToken);
+
+        var gameInfo = _gameManager.GetGameInfo(chatInfo.Id);
+        if (_gameManager.TransitionToState(chatInfo.Id, GameState.Collection))
+        {
+            await _stateActionFactory.GetStateAction(GameState.Collection)
+                .SendActionMessage(gameInfo, true, cancellationToken: cancellationToken);
+        }
     }
 
     public async Task GetStatistics(Chat chatInfo, CancellationToken cancellationToken = default)

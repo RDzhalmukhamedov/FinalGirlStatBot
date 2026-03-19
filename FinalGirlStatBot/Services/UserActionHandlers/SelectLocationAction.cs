@@ -1,5 +1,6 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -43,9 +44,9 @@ public class SelectLocationAction(IFGStatsUnitOfWork dbConnection, ITelegramBotC
     private async Task<Message> SendLocationSelector(GameInfo gameInfo, bool deletePrev = false,
         string additionalMessage = "", Season selectedSeason = Season.S1, CancellationToken cancellationToken = default)
     {
-        var allLocations = await _db.Locations.GetAll(cancellationToken);
+        var locations = await GetLocationsForUser(gameInfo, cancellationToken);
 
-        var keyboard = GetSelectionButtons(allLocations, selectedSeason);
+        var keyboard = GetSelectionButtons(locations, selectedSeason);
 
         return await UpdateMessage(gameInfo, Shared.Text.SelectLocationMessage, keyboard, deletePrev, additionalMessage, cancellationToken);
     }

@@ -3,6 +3,8 @@ using FinalGirlStatBot.Abstract;
 using FinalGirlStatBot.DB;
 using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.Services;
+using FinalGirlStatBot.Services.AdminServices;
+using FinalGirlStatBot.Services.TelegramServices;
 using FinalGirlStatBot.Services.UserActionHandlers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +49,8 @@ builder.Host
         services.AddTransient<IGirlRepository, GirlRepository>();
         services.AddTransient<IKillerRepository, KillerRepository>();
         services.AddTransient<ILocationRepository, LocationRepository>();
+        services.AddTransient<IBoxRepository, BoxRepository>();
+        services.AddTransient<IUserBoxRepository, UserBoxRepository>();
         services.AddTransient<IFGStatsUnitOfWork, FGStatsUnitOfWork>();
 
         // Admin services
@@ -60,6 +64,19 @@ builder.Host
     });
 
 var app = builder.Build();
+
+try
+{
+    using var scope = app.Services.CreateScope();
+    var provider = scope.ServiceProvider;
+    var factory = provider.GetRequiredService<IDbContextFactory<FGStatsContext>>();
+    await using var context = await factory.CreateDbContextAsync();
+    await context.Database.MigrateAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[Migration] failed: {ex.Message}");
+}
 
 app.MapControllerRoute(name: "default", pattern: "{controller=App}/{action=Index}/{id?}");
 app.MapHealthChecks("/healthz");

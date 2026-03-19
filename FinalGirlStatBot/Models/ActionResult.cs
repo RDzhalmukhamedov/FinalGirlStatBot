@@ -1,4 +1,4 @@
-namespace FinalGirlStatBot;
+namespace FinalGirlStatBot.Models;
 
 public class ActionResult
 {

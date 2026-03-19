@@ -1,4 +1,5 @@
 ﻿using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -40,7 +41,7 @@ public class CreatingGameAction(IFGStatsUnitOfWork dbConnection, ITelegramBotCli
 
     private async Task<ActionResult> SelectRandomGirl(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
-        var allGirls = await _db.Girls.GetAll(cancellationToken);
+        var allGirls = await GetGirlsForUser(gameInfo, cancellationToken);
         _gameManager.SetGirl(gameInfo, GetRandomObject(allGirls));
         await SendActionMessage(gameInfo, cancellationToken: cancellationToken);
 
@@ -49,7 +50,7 @@ public class CreatingGameAction(IFGStatsUnitOfWork dbConnection, ITelegramBotCli
 
     private async Task<ActionResult> SelectRandomKiller(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
-        var allKillers = await _db.Killers.GetAll(cancellationToken);
+        var allKillers = await GetKillersForUser(gameInfo, cancellationToken);
         _gameManager.SetKiller(gameInfo, GetRandomObject(allKillers));
         await SendActionMessage(gameInfo, cancellationToken: cancellationToken);
 
@@ -58,7 +59,7 @@ public class CreatingGameAction(IFGStatsUnitOfWork dbConnection, ITelegramBotCli
 
     private async Task<ActionResult> SelectRandomLocation(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
-        var allLocations = await _db.Locations.GetAll(cancellationToken);
+        var allLocations = await GetLocationsForUser(gameInfo, cancellationToken);
         _gameManager.SetLocation(gameInfo, GetRandomObject(allLocations));
         await SendActionMessage(gameInfo, cancellationToken: cancellationToken);
 
@@ -75,9 +76,9 @@ public class CreatingGameAction(IFGStatsUnitOfWork dbConnection, ITelegramBotCli
 
     private async Task<ActionResult> SelectRandomUnplayedCombination(GameInfo gameInfo, CancellationToken cancellationToken = default)
     {
-        var allGirls = await _db.Girls.GetAll(cancellationToken);
-        var allKillers = await _db.Killers.GetAll(cancellationToken);
-        var allLocations = await _db.Locations.GetAll(cancellationToken);
+        var allGirls = await GetGirlsForUser(gameInfo, cancellationToken);
+        var allKillers = await GetKillersForUser(gameInfo, cancellationToken);
+        var allLocations = await GetLocationsForUser(gameInfo, cancellationToken);
 
         var userGames = await _db.Games.GetByUser(gameInfo.ChatId, cancellationToken);
 

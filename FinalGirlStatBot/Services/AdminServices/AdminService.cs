@@ -2,7 +2,7 @@ using FinalGirlStatBot.Abstract;
 using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 
-namespace FinalGirlStatBot.Services;
+namespace FinalGirlStatBot.Services.AdminServices;
 
 public class AdminService(IOptions<AdminConfiguration> adminConfigOptions) : IAdminService
 {

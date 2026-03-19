@@ -1,6 +1,7 @@
 using FinalGirlStatBot.DB.Abstract;
 using FinalGirlStatBot.DB.Domain;
 using FinalGirlStatBot.DB.DTOs;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -44,16 +45,8 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
                 messageId: gameInfo.MessageId.Value,
                 text: text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                replyMarkup: keyboard,
                 cancellationToken: cancellationToken);
-
-            if (keyboard is not null)
-            {
-                message = await _botClient.EditMessageReplyMarkup(
-                    chatId: gameInfo.ChatId,
-                    messageId: gameInfo.MessageId.Value,
-                    replyMarkup: keyboard,
-                    cancellationToken: cancellationToken);
-            }
 
             return message;
         }
@@ -89,7 +82,7 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
     }
 
 
-    protected async Task<ActionResult> FillRepeatGameInfo(GameInfo gameInfo, IEnumerable<string> idStr, CancellationToken cancellationToken)
+    protected async Task<ActionResult> FillRepeatGameInfo(GameInfo gameInfo, IEnumerable<string> idStr, CancellationToken cancellationToken = default)
     {
         if (int.TryParse(idStr.First(), out var gameId))
         {
@@ -107,23 +100,54 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
         return ActionResult.Error();
     }
 
-    protected static InlineKeyboardButton[][] GetSelectionButtons(IEnumerable<IBaseDto> entities, Season selectedSeason)
+    protected async Task<IEnumerable<GirlDto>> GetGirlsForUser(GameInfo gameInfo, CancellationToken cancellationToken = default)
+    {
+        var allGirls = await _db.Girls.GetAll(cancellationToken);
+        var userBoxIds = await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken);
+        var filteredGirls = allGirls.Where(g => g.BoxId.HasValue && userBoxIds.Contains(g.BoxId.Value)).ToList();
+
+        return filteredGirls.Count > 0 ? filteredGirls : allGirls;
+    }
+
+    protected async Task<IEnumerable<KillerDto>> GetKillersForUser(GameInfo gameInfo, CancellationToken cancellationToken = default)
+    {
+        var allKillers = await _db.Killers.GetAll(cancellationToken);
+        var userBoxIds = await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken);
+        var filteredKillers = allKillers.Where(g => g.BoxId.HasValue && userBoxIds.Contains(g.BoxId.Value)).ToList();
+
+        return filteredKillers.Count > 0 ? filteredKillers : allKillers;
+    }
+
+    protected async Task<IEnumerable<LocationDto>> GetLocationsForUser(GameInfo gameInfo, CancellationToken cancellationToken = default)
+    {
+        var allLocations = await _db.Locations.GetAll(cancellationToken);
+        var userBoxIds = await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken);
+        var filteredLocations = allLocations.Where(g => g.BoxId.HasValue && userBoxIds.Contains(g.BoxId.Value)).ToList();
+
+        return filteredLocations.Count > 0 ? filteredLocations : allLocations;
+    }
+
+    protected static InlineKeyboardButton[][] GetSelectionButtons(IEnumerable<IBaseDto> entities, Season selectedSeason, HashSet<int>? checkedButtons = null)
     {
         var seasons = entities.Select(g => g.Season).Distinct().Order();
-        var keyboard = GetEntitiesBySeasonButtons(entities, selectedSeason);
+        var keyboard = GetEntitiesBySeasonButtons(entities, selectedSeason, checkedButtons);
         keyboard = keyboard.Append(GetSeasonButtons(seasons, selectedSeason)).ToArray();
 
         return keyboard;
     }
 
-    private static InlineKeyboardButton[][] GetEntitiesBySeasonButtons(IEnumerable<IBaseDto> entities, Season selectedSeason)
+    private static InlineKeyboardButton[][] GetEntitiesBySeasonButtons(IEnumerable<IBaseDto> entities, Season selectedSeason, HashSet<int>? checkedButtons = null)
     {
+        var needCheckmark = checkedButtons is not null;
         var bySeason = entities.GroupBy(g => g.Season).ToDictionary(g => g.Key, g => g.ToList());
         var chunked = bySeason[selectedSeason].Chunk(2);
         var keyboard = Array.Empty<InlineKeyboardButton[]>();
         foreach (var chunk in chunked)
         {
-            keyboard = keyboard.Append(chunk.Select(e => new InlineKeyboardButton(e.Name, e.Id.ToString())).ToArray()).ToArray();
+            keyboard = keyboard.Append(chunk
+                .Select(e => new InlineKeyboardButton(needCheckmark && checkedButtons!.Contains(e.Id) ? $"✓ {e.Name}" : e.Name, e.Id.ToString()))
+                .ToArray())
+            .ToArray();
         }
 
         return keyboard;

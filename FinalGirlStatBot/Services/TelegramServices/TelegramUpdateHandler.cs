@@ -4,7 +4,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 
-namespace FinalGirlStatBot.Services;
+namespace FinalGirlStatBot.Services.TelegramServices;
 
 public class TelegramUpdateHandler : IUpdateHandler
 {
@@ -53,6 +53,12 @@ public class TelegramUpdateHandler : IUpdateHandler
         if (message.Text is not { } messageText)
             return;
 
+        if (_adminCommandService.IsAwaitingBoxName(message.Chat.Id))
+        {
+            await _adminCommandService.HandleAddBoxName(message.Chat, messageText, stoppingToken);
+            return;
+        }
+
         var words = messageText.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var args = words.Length > 1 ? words.Skip(1).ToArray() : [];
 
@@ -63,10 +69,12 @@ public class TelegramUpdateHandler : IUpdateHandler
         var action = command switch
         {
             "/newgame" or "/ng" => _gameService.StartNewGame(message.Chat, stoppingToken),
+            "/collection" => _gameService.StartCollection(message.Chat, stoppingToken),
             "/stat" => _gameService.GetStatistics(message.Chat, stoppingToken),
             "/delete" => _gameService.DeleteGame(message.Chat, idStr, stoppingToken),
             "/repeat" => _gameService.RepeatGame(message.Chat, idStr, stoppingToken),
 
+            "/addbox" => _adminCommandService.HandleAddBox(message.Chat, args, stoppingToken),
             "/addgirl" => _adminCommandService.HandleAddGirl(message.Chat, args, stoppingToken),
             "/addkiller" => _adminCommandService.HandleAddKiller(message.Chat, args, stoppingToken),
             "/addlocation" => _adminCommandService.HandleAddLocation(message.Chat, args, stoppingToken),
@@ -80,6 +88,13 @@ public class TelegramUpdateHandler : IUpdateHandler
     private async Task BotOnCallbackReceived(CallbackQuery query, CancellationToken stoppingToken)
     {
         _logger.LogInformation("Receive callback query from {Username}", query.From.Username);
+
+        if (query.Data?.StartsWith(Shared.Text.AddBoxCallback) == true)
+        {
+            await _adminCommandService.ProcessAddBoxCallback(query.Message!.Chat, query.Data!, stoppingToken);
+            return;
+        }
+
         await _gameService.ProcessUserInput(query.Message!.Chat.Id, query.Data!, stoppingToken);
     }
 

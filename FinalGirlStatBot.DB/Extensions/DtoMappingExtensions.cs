@@ -7,21 +7,21 @@ public static class DtoMappingExtensions
 {
     // Girl mappings
     public static GirlDto ToDto(this Girl girl) =>
-        new(girl.Id, girl.Name, girl.Season);
+        new(girl.Id, girl.Name, girl.Season, girl.BoxId);
 
     public static Girl ToEntity(this GirlDto girlDto) =>
         new() { Name = girlDto.Name, Season = girlDto.Season };
 
     // Killer mappings
     public static KillerDto ToDto(this Killer killer) =>
-        new(killer.Id, killer.Name, killer.Season);
+        new(killer.Id, killer.Name, killer.Season, killer.BoxId);
 
     public static Killer ToEntity(this KillerDto killerDto) =>
         new() { Name = killerDto.Name, Season = killerDto.Season };
 
     // Location mappings
     public static LocationDto ToDto(this Location location) =>
-        new(location.Id, location.Name, location.Season);
+        new(location.Id, location.Name, location.Season, location.BoxId);
 
     public static Location ToEntity(this LocationDto locationDto) =>
         new() { Name = locationDto.Name, Season = locationDto.Season };
@@ -32,6 +32,30 @@ public static class DtoMappingExtensions
 
     public static User ToEntity(this UserDto userDto) =>
         new() { ChatId = userDto.ChatId, UserId = null };
+
+    // Box mappings
+    public static BoxDto ToDto(this Box box) =>
+        new(box.Id, box.Name, box.Season, box.Location?.ToDto(), box.Killer?.ToDto(), box.Girls.ToDtos());
+
+    public static Box ToEntity(this BoxDto boxDto)
+    {
+        var box = new Box()
+        {
+            Name = boxDto.Name,
+            Season = boxDto.Season,
+            LocationId = boxDto.Location?.Id,
+            KillerId = boxDto.Killer?.Id,
+        };
+
+        foreach (var girlDto in boxDto.Girls)
+        {
+            var girl = girlDto.ToEntity();
+            girl.Box = box;
+            box.Girls.Add(girl);
+        }
+
+        return box;
+    }
 
     // Game mappings
     public static GameDto ToDto(this Game game) =>
@@ -45,7 +69,6 @@ public static class DtoMappingExtensions
             Location = game.Location?.ToDto(),
             User = game.User?.ToDto()
         };
-
     public static Game ToEntity(this GameDto gameDto) =>
         new()
         {
@@ -61,6 +84,11 @@ public static class DtoMappingExtensions
     // Collection mappings
     public static IEnumerable<GirlDto> ToDtos(this IEnumerable<Girl> girls) =>
         girls.Select(g => g.ToDto());
+
+    public static IEnumerable<BoxDto> ToDtos(this IEnumerable<Box> boxes) =>
+        boxes.Select(b => b.ToDto());
+    public static IQueryable<BoxDto> ToDtos(this IQueryable<Box> boxes) =>
+        boxes.Select(b => b.ToDto());
     public static IQueryable<GirlDto> ToDtos(this IQueryable<Girl> girls) =>
         girls.Select(g => g.ToDto());
 

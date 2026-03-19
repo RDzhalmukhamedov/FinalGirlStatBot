@@ -1,5 +1,6 @@
 using System.Text;
 using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 

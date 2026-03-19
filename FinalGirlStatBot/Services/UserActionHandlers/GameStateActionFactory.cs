@@ -1,4 +1,5 @@
 using FinalGirlStatBot.DB.Abstract;
+using FinalGirlStatBot.Models;
 using Telegram.Bot;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
@@ -31,6 +32,8 @@ public class GameStateActionFactory(IFGStatsUnitOfWork dbConnection, ITelegramBo
                 return new StatisticsAction(_db, _botClient, _gameManager);
             case GameState.DeleteGame:
                 return new DeleteGameAction(_db, _botClient, _gameManager);
+            case GameState.Collection:
+                return new CollectionAction(_db, _botClient, _gameManager);
             default:
                 return new InitStateAction(_db, _botClient, _gameManager);
         }

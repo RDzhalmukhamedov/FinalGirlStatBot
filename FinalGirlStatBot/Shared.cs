@@ -28,6 +28,21 @@ public static class Shared
         public const string RandomUnplayed = "🎲 Случ. из неигранного";
         public const string RandomUnplayedCallback = "rUnplayed";
 
+        public const string BoxGirlCallback = "boxgirl";
+        public const string DoneGirlCallback = "donegirls";
+        public const string SkipGirlCallback = "skipgirls";
+        public const string SeasonCallback = "season";
+        public const string BoxKillerCallback = "boxkiller";
+        public const string SkipKillerCallback = "skipkiller";
+        public const string BoxLocationCallback = "boxloc";
+        public const string SkipLocationCallback = "skiploc";
+
+        public const string CollectionCallback = "collection";
+        public const string CollectionToggleCallback = "toggle";
+        public const string CollectionDoneCallback = "done";
+        public const string CancelCallback = "cancel";
+
+
         public const string Win = "🏆 Победа";
         public const string WinCallback = "win";
 
@@ -80,7 +95,7 @@ public static class Shared
         public const string YouGonnaDeleteMessage = "Вы собираетесь удалить информацию о";
         public const string DeletionCancelledMessage = "Удаление отменено!";
         public const string DeleteGameMessage = "Удалена информация о";
-        public const string UsageInfoMessage = "Команды для бота:\n/ng - записать информацию о сыгранной партии,\n/stat - статистика по сыгранным партиям";
+        public const string UsageInfoMessage = "Команды для бота:\n/ng - записать информацию о сыгранной партии,\n/stat - статистика по сыгранным партиям, \n/collection - настроить коллекцию фильмов";
         public const string RecordNotFoundMessage = "Запись с таким номером не найдена";
         public const string NoResultsCountMessage = "из них без результата";
 
@@ -92,14 +107,34 @@ public static class Shared
         public const string KillerWithNameMessage = "❌ Убийца с именем";
         public const string LocationWithNameMessage = "❌ Локация с названием";
         public const string Season = "Сезон";
-        public const string Girl = "✅ Девушка";
-        public const string Killer = "✅ Убийца";
-        public const string Location = "✅ Локация";
+        public const string Girls = "👩 Девушки";
+        public const string GirlCheck = "✅ Девушка";
+        public const string Killer = "🔪 Убийца";
+        public const string KillerCheck = "✅ Убийца";
+        public const string Location = "🏠 Локация";
+        public const string LocationCheck = "✅ Локация";
         public const string AlreadyExsistsMessage = "уже существует.";
         public const string SuccessAddMessage = "успешно добавлена в базу данных.";
         public const string SuccessAdd2Message = "успешно добавлен в базу данных.";
 
+        public const string AddBox = "📼 Бокс";
+        public const string AddBoxCallback = "addBox";
+        public const string BoxWithNameMessage = "❌ Бокс с именем";
+        public const string SelectSeasonMessage = "Выберите сезон:";
+        public const string EnterBoxNameMessage = "Введите название бокса:";
+        public const string SelectBoxLocationMessage = "🏠 Выберите локацию для бокса:";
+        public const string SelectBoxKillerMessage = "🔪 Выберите убийцу для бокса:";
+        public const string SelectBoxGirlsMessage = "👩 Выберите девушек для бокса (можно несколько):";
+        public const string BoxCreatedMessage = "Бокс успешно создан!";
+        public const string BoxCreationCancelledMessage = "Создание бокса отменено.";
+        public const string BoxCreationStepMessage = "Создание бокса: {0}";
+        public const string SkipSelection = "⏭️ Пропустить";
+        public const string DoneSelection = "✅ Готово";
+        public const string GirlsSelectedMessage = "Выбрано девушек: {0}";
+
         public const string Unknown = "Неизвестно";
+
+        public const string CollectionMessage = "Выберите боксы в коллекцию:";
     }
 
     public static class Buttons

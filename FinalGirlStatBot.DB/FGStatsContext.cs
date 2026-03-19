@@ -15,11 +15,11 @@ public sealed class FGStatsContext : DbContext
 
     public DbSet<Location> Locations { get; set; } = null!;
 
+    public DbSet<Box> Boxes { get; set; } = null!;
+
+    public DbSet<UserBox> UserBoxes { get; set; } = null!;
+
     public FGStatsContext(DbContextOptions<FGStatsContext> options) : base(options)
     {
-        // Явно отключаем lazy loading и change tracking proxy
-        ChangeTracker.LazyLoadingEnabled = false;
-        ChangeTracker.AutoDetectChangesEnabled = false;
-        ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
     }
 }

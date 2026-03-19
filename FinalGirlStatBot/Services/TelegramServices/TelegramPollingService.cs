@@ -1,6 +1,6 @@
 ﻿using FinalGirlStatBot.Abstract;
 
-namespace FinalGirlStatBot.Services;
+namespace FinalGirlStatBot.Services.TelegramServices;
 
 public class TelegramPollingService : PollingServiceBase<TelegramReceiverService>
 {

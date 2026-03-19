@@ -5,6 +5,7 @@ using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using FinalGirlStatBot.Models;
 
 namespace FinalGirlStatBot.Services.UserActionHandlers;
 

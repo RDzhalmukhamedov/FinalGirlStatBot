@@ -16,5 +16,10 @@ public class Girl : IBaseDomain
     [Required]
     public Season Season { get; set; }
 
+    public int? BoxId { get; set; }
+
+    [ForeignKey("BoxId")]
+    public virtual Box? Box { get; set; }
+
     public ICollection<Game> Games { get; } = new List<Game>();
 }

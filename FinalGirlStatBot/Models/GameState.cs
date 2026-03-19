@@ -1,4 +1,4 @@
-﻿namespace FinalGirlStatBot;
+﻿namespace FinalGirlStatBot.Models;
 
 public enum GameState
 {
@@ -11,4 +11,5 @@ public enum GameState
     GameCompleted = 6,
     ViewingStats = 7,
     DeleteGame = 8,
+    Collection = 9,
 }

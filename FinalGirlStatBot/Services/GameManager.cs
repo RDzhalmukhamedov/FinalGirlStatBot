@@ -1,12 +1,26 @@
 ﻿using System.Collections.Concurrent;
 using FinalGirlStatBot.DB.DTOs;
 using FinalGirlStatBot.DB.Domain;
+using FinalGirlStatBot.Models;
 
 namespace FinalGirlStatBot.Services;
 
 public class GameManager
 {
+    public readonly ConcurrentDictionary<long, BoxCreationState> BoxCreationStates = new();
+    public readonly ConcurrentDictionary<long, UserCollectionState> UserCollections = new();
     private readonly ConcurrentDictionary<long, GameInfo> ActiveGames = new();
+
+    public UserCollectionState GetCollectionState(long chatId)
+    {
+        if (!UserCollections.TryGetValue(chatId, out var state))
+        {
+            state = new UserCollectionState();
+        }
+        UserCollections[chatId] = state;
+
+        return state;
+    }
 
     public GameInfo StartNewGame(UserDto user)
     {

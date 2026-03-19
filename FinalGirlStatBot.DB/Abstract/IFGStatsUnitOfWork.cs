@@ -7,4 +7,6 @@ public interface IFGStatsUnitOfWork
     IGirlRepository Girls { get; }
     IKillerRepository Killers { get; }
     ILocationRepository Locations { get; }
+    IBoxRepository Boxes { get; }
+    IUserBoxRepository UserBoxes { get; }
 }

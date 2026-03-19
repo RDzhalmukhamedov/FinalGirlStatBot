@@ -1,6 +1,6 @@
 using FinalGirlStatBot.DB.DTOs;
 
-namespace FinalGirlStatBot;
+namespace FinalGirlStatBot.Models;
 
 public class GameInfo
 {

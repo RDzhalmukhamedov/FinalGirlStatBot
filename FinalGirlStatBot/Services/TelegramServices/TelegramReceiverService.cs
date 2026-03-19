@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
-namespace FinalGirlStatBot.Services;
+namespace FinalGirlStatBot.Services.TelegramServices;
 
 public class TelegramReceiverService : ReceiverServiceBase<TelegramUpdateHandler>
 {
