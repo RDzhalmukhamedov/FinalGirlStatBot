@@ -29,7 +29,9 @@ public class GameService(GameManager gameManager, IFGStatsUnitOfWork dbConnectio
     {
         await GetOrCreateUser(chatInfo.Id, chatInfo.Username, cancellationToken);
 
-        var gameInfo = _gameManager.GetGameInfo(chatInfo.Id);
+        var gameInfo = await CheckExsistingGame(chatInfo.Id, cancellationToken);
+        if (gameInfo is null) return;
+
         if (_gameManager.TransitionToState(chatInfo.Id, GameState.Collection))
         {
             await _stateActionFactory.GetStateAction(GameState.Collection)

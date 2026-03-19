@@ -12,8 +12,8 @@ public static class StateTransitionValidator
         [GameState.SelectKiller] = new() { GameState.CreatingGame },
         [GameState.SelectLocation] = new() { GameState.CreatingGame },
         [GameState.GameInProgress] = new() { GameState.GameCompleted, GameState.Init },
-        [GameState.GameCompleted] = new() { GameState.CreatingGame, GameState.ViewingStats, GameState.Init },
-        [GameState.ViewingStats] = new() { GameState.CreatingGame, GameState.DeleteGame, GameState.Init, GameState.ViewingStats },
+        [GameState.GameCompleted] = new() { GameState.CreatingGame, GameState.ViewingStats, GameState.Init, GameState.Collection },
+        [GameState.ViewingStats] = new() { GameState.CreatingGame, GameState.DeleteGame, GameState.Init, GameState.ViewingStats, GameState.Collection },
         [GameState.DeleteGame] = new() { GameState.Init, GameState.ViewingStats },
         [GameState.Collection] = new() { GameState.Collection, GameState.Init },
     };

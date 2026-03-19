@@ -81,7 +81,7 @@ public static class Shared
         public const string SelectLocationMessage = "🏠 Выберите локацию:";
         public const string ShootInProgressMessage = "Идёт съемка фильма";
         public const string WriteResultsMessage = "Отметьте результат партии:";
-        public const string UHaveUnfinishedGameMessage = "У вас есть другой незавершенный фильм";
+        public const string UHaveUnfinishedGameMessage = "У вас есть незавершенное действие";
         public const string SelectionQuestionMessage = "Какой фильм будем снимать?";
         public const string GameResetedMessage = "Съёмки прерваны, статистика записана не будет!";
         public const string TotalGamesMessage = "Общее количество игр:";
