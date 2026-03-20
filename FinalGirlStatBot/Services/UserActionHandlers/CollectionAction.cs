@@ -20,7 +20,6 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
             state.BoxIds = boxIds;
         }
 
-
         return await SendBoxSelector(gameInfo, state.BoxIds, deletePrev, additionalMessage, state.SelectedSeason, cancellationToken);
     }
 
@@ -58,14 +57,14 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
             await _db.UserBoxes.SetBoxesForUser(gameInfo.ChatId, state.BoxIds, cancellationToken);
             _gameManager.UserCollections.TryRemove(gameInfo.ChatId, out var _);
 
-            return ActionResult.Ok(GameState.Init);
+            return ActionResult.Ok(GameState.Init, Shared.Text.SuccessCollectionMessage);
         }
 
         if (userAction == Shared.Text.CancelCallback)
         {
             _gameManager.UserCollections.TryRemove(gameInfo.ChatId, out var _);
 
-            return ActionResult.Ok(GameState.Init);
+            return ActionResult.Ok(GameState.Init, Shared.Text.CancelCollectionMessage);
         }
 
         return ActionResult.Error(Shared.Text.SomethingWrongMessage);

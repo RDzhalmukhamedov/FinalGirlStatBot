@@ -37,6 +37,8 @@ public static class Shared
         public const string BoxLocationCallback = "boxloc";
         public const string SkipLocationCallback = "skiploc";
 
+        public const string SuccessCollectionMessage = "Коллекция успешно обновлена!";
+        public const string CancelCollectionMessage = "Редактирование коллекции отменено!";
         public const string CollectionCallback = "collection";
         public const string CollectionToggleCallback = "toggle";
         public const string CollectionDoneCallback = "done";

@@ -111,17 +111,27 @@ public class BoxRepository : IBoxRepository
         var girlIds = box.Girls.Select(g => g.Id).ToList();
         if (girlIds.Any())
         {
-            var girls = await context.Girls
-                .Where(g => girlIds.Contains(g.Id))
-                .ToListAsync(cancellationToken);
+            var girls = await context.Girls.Where(g => girlIds.Contains(g.Id)).ToListAsync(cancellationToken);
 
             foreach (var girl in girls)
             {
                 girl.BoxId = entity.Id;
             }
-
-            await context.SaveChangesAsync(cancellationToken);
         }
+
+        if (box.Location is not null)
+        {
+            var location = await context.Locations.FirstOrDefaultAsync(l => l.Id == box.Location.Id, cancellationToken);
+            if (location is not null) location.BoxId = entity.Id;
+        }
+
+        if (box.Killer is not null)
+        {
+            var killer = await context.Locations.FirstOrDefaultAsync(l => l.Id == box.Killer.Id, cancellationToken);
+            if (killer is not null) killer.BoxId = entity.Id;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
 
         return entity.Id;
     }
