@@ -130,6 +130,16 @@ public abstract class GameStateActionBase(IFGStatsUnitOfWork dbConnection, ITele
     protected static InlineKeyboardButton[][] GetSelectionButtons(IEnumerable<IBaseDto> entities, Season selectedSeason, HashSet<int>? checkedButtons = null)
     {
         var seasons = entities.Select(g => g.Season).Distinct().Order();
+        if (!seasons.Any())
+        {
+            return [];
+        }
+
+        if (!seasons.Contains(selectedSeason))
+        {
+            selectedSeason = seasons.First();
+        }
+
         var keyboard = GetEntitiesBySeasonButtons(entities, selectedSeason, checkedButtons);
         keyboard = keyboard.Append(GetSeasonButtons(seasons, selectedSeason)).ToArray();
 

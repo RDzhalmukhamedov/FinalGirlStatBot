@@ -11,7 +11,10 @@ public class InitStateAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClient
     public override async Task<Message> SendActionMessage
         (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        return await UpdateMessage(gameInfo, additionalMessage, null, deletePrev, cancellationToken: cancellationToken);
+        var message = await UpdateMessage(gameInfo, additionalMessage, null, deletePrev, cancellationToken: cancellationToken);
+        gameInfo.MessageId = null;
+
+        return message;
     }
 
     public override async Task<ActionResult> ProcessCallback

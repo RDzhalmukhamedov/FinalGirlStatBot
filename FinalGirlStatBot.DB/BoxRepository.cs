@@ -127,7 +127,7 @@ public class BoxRepository : IBoxRepository
 
         if (box.Killer is not null)
         {
-            var killer = await context.Locations.FirstOrDefaultAsync(l => l.Id == box.Killer.Id, cancellationToken);
+            var killer = await context.Killers.FirstOrDefaultAsync(l => l.Id == box.Killer.Id, cancellationToken);
             if (killer is not null) killer.BoxId = entity.Id;
         }
 

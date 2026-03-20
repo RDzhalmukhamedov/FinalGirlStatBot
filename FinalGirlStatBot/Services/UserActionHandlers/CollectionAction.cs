@@ -38,6 +38,7 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             if (state.BoxIds.Contains(boxId)) state.BoxIds.Remove(boxId);
             else state.BoxIds.Add(boxId);
+            await SendBoxSelector(gameInfo, state.BoxIds, selectedSeason: state.SelectedSeason, cancellationToken: cancellationToken);
 
             return ActionResult.Ok();
         }
@@ -46,8 +47,7 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         if (seasonSelected)
         {
             state.SelectedSeason = season;
-            var boxIds = _gameManager.UserCollections[gameInfo.ChatId].BoxIds;
-            await SendBoxSelector(gameInfo, boxIds!, selectedSeason: season, cancellationToken: cancellationToken);
+            await SendBoxSelector(gameInfo, state.BoxIds, selectedSeason: state.SelectedSeason, cancellationToken: cancellationToken);
 
             return ActionResult.Ok();
         }
@@ -57,14 +57,14 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
             await _db.UserBoxes.SetBoxesForUser(gameInfo.ChatId, state.BoxIds, cancellationToken);
             _gameManager.UserCollections.TryRemove(gameInfo.ChatId, out var _);
 
-            return ActionResult.Ok(GameState.Init, Shared.Text.SuccessCollectionMessage);
+            return await Reset(gameInfo, cancellationToken, Shared.Text.SuccessCollectionMessage);
         }
 
         if (userAction == Shared.Text.CancelCallback)
         {
             _gameManager.UserCollections.TryRemove(gameInfo.ChatId, out var _);
 
-            return ActionResult.Ok(GameState.Init, Shared.Text.CancelCollectionMessage);
+            return await Reset(gameInfo, cancellationToken, Shared.Text.CancelCollectionMessage);
         }
 
         return ActionResult.Error(Shared.Text.SomethingWrongMessage);
