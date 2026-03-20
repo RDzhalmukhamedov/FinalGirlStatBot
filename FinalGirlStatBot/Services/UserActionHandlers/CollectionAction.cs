@@ -13,18 +13,26 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
     public override async Task<Message> SendActionMessage
         (GameInfo gameInfo, bool deletePrev = false, string additionalMessage = "", CancellationToken cancellationToken = default)
     {
-        var boxIds = new HashSet<int>(await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken));
-
         var state = _gameManager.GetCollectionState(gameInfo.ChatId);
-        state.BoxIds = boxIds;
+        if (state.BoxIds is null)
+        {
+            var boxIds = new HashSet<int>(await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken));
+            state.BoxIds = boxIds;
+        }
 
-        return await SendBoxSelector(gameInfo, boxIds, deletePrev, additionalMessage, Season.S1, cancellationToken);
+
+        return await SendBoxSelector(gameInfo, state.BoxIds, deletePrev, additionalMessage, state.SelectedSeason, cancellationToken);
     }
 
     public override async Task<ActionResult> ProcessCallback
         (GameInfo gameInfo, string userAction, CancellationToken cancellationToken = default, dynamic? payload = null)
     {
         var state = _gameManager.GetCollectionState(gameInfo.ChatId);
+        if (state.BoxIds is null)
+        {
+            var boxIds = new HashSet<int>(await _db.UserBoxes.GetBoxIdsForUser(gameInfo.ChatId, cancellationToken));
+            state.BoxIds = boxIds;
+        }
 
         var boxSelected = int.TryParse(userAction, out var boxId);
         if (boxSelected)
@@ -40,7 +48,7 @@ public class CollectionAction(IFGStatsUnitOfWork dbConnection, ITelegramBotClien
         {
             state.SelectedSeason = season;
             var boxIds = _gameManager.UserCollections[gameInfo.ChatId].BoxIds;
-            await SendBoxSelector(gameInfo, boxIds, selectedSeason: season, cancellationToken: cancellationToken);
+            await SendBoxSelector(gameInfo, boxIds!, selectedSeason: season, cancellationToken: cancellationToken);
 
             return ActionResult.Ok();
         }
