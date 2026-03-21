@@ -47,9 +47,7 @@ public class LocationSelectedBoxAction : BaseBoxCreationAction
 
         foreach (var chunk in killers.Chunk(2))
         {
-            keyboard.Add(chunk.Select(k => new InlineKeyboardButton(k.Name,
-                $"{callbackPart}{k.Id}"))
-                .ToArray());
+            keyboard.Add(chunk.Select(k => new InlineKeyboardButton(k.BoxId.HasValue ? $"{k.Name} 📼" : k.Name, $"{callbackPart}{k.Id}")).ToArray());
         }
 
         keyboard.Add(

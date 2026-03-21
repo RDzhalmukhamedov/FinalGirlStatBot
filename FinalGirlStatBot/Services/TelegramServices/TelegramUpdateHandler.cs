@@ -78,6 +78,7 @@ public class TelegramUpdateHandler : IUpdateHandler
             "/addgirl" => _adminCommandService.HandleAddGirl(message.Chat, args, stoppingToken),
             "/addkiller" => _adminCommandService.HandleAddKiller(message.Chat, args, stoppingToken),
             "/addlocation" => _adminCommandService.HandleAddLocation(message.Chat, args, stoppingToken),
+            "/broadcast" => _adminCommandService.HandleBroadcast(message.Chat, args, stoppingToken),
 
             _ => _gameService.SendUsage(message.Chat, stoppingToken),
         };

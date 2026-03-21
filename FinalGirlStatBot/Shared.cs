@@ -78,6 +78,11 @@ public static class Shared
 
         public const string CreatingGameCallback = "creation";
 
+        public const string BroadcastStartingMessage = "🚀 Рассылка началась. Сообщение будет отправлено всем пользователям.";
+        public const string BroadcastProgressMessage = "🚦 Рассылка продолжается: отправлено {0} из {1}.";
+        public const string BroadcastCompletedMessage = "🚀 Рассылка завершена. Отправлено {0} пользователей.";
+        public const string BroadcastUsageMessage = "Используйте: /broadcast <сообщение>";
+
         public const string SelectGirlMessage = "👩 Выберите девушку:";
         public const string SelectKillerMessage = "🔪 Выберите убийцу:";
         public const string SelectLocationMessage = "🏠 Выберите локацию:";

@@ -96,6 +96,77 @@ public class AdminCommandService(IFGStatsUnitOfWork dbConnection, ITelegramBotCl
             cancellationToken: cancellationToken);
     }
 
+    public async Task HandleBroadcast(Chat chatInfo, string[] args, CancellationToken cancellationToken = default)
+    {
+        if (!await _adminService.IsAdmin(chatInfo, cancellationToken))
+        {
+            await _botClient.SendMessage(
+                chatId: chatInfo.Id,
+                text: Shared.Text.AccessDeniedMessage,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (args == null || args.Length == 0)
+        {
+            await _botClient.SendMessage(
+                chatId: chatInfo.Id,
+                text: Shared.Text.BroadcastUsageMessage,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        var message = string.Join(" ", args);
+        var allUsers = (await _db.Users.GetAll(cancellationToken)).ToList();
+
+        const int batchSize = 50;
+        int total = allUsers.Count;
+        int sentTotal = 0;
+
+        await _botClient.SendMessage(
+            chatId: chatInfo.Id,
+            text: Shared.Text.BroadcastStartingMessage,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            cancellationToken: cancellationToken);
+
+        for (int i = 0; i < total; i += batchSize)
+        {
+            var batch = allUsers.Skip(i).Take(batchSize).ToList();
+            var tasks = batch.Select(u => Task.Run(async () =>
+            {
+                try
+                {
+                    await _botClient.SendMessage(chatId: u.ChatId, text: message, cancellationToken: cancellationToken);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }));
+
+            var results = await Task.WhenAll(tasks);
+            sentTotal += results.Count(r => r);
+
+            await _botClient.SendMessage(
+                chatId: chatInfo.Id,
+                text: string.Format(Shared.Text.BroadcastProgressMessage, sentTotal, total),
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+                cancellationToken: cancellationToken);
+
+            // Small delay to avoid hitting rate limits
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+        }
+
+        await _botClient.SendMessage(
+            chatId: chatInfo.Id,
+            text: string.Format(Shared.Text.BroadcastCompletedMessage, sentTotal),
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
+            cancellationToken: cancellationToken);
+    }
+
     public async Task HandleAddBox(Chat chatInfo, string[] args, CancellationToken cancellationToken = default)
     {
         if (!await _adminService.IsAdmin(chatInfo, cancellationToken))
@@ -144,10 +215,10 @@ public class AdminCommandService(IFGStatsUnitOfWork dbConnection, ITelegramBotCl
             Shared.Text.BoxLocationCallback => new LocationSelectedBoxAction(_db, _botClient, _gameManager),
             Shared.Text.BoxKillerCallback => new KillerSelectedBoxAction(_db, _botClient, _gameManager),
             Shared.Text.BoxGirlCallback => new GirlsSelectedBoxAction(_db, _botClient, _gameManager),
-            Shared.Text.CancelCallback => new GirlsSelectedBoxAction(_db, _botClient, _gameManager),
-            _ => new GirlsSelectedBoxAction(_db, _botClient, _gameManager),
+            Shared.Text.CancelCallback => new CancelBoxCreationAction(_db, _botClient, _gameManager),
+            _ => new CancelBoxCreationAction(_db, _botClient, _gameManager),
         };
-        await handler.Execute(chatInfo, cancellationToken, parts[2]);
+        await handler.Execute(chatInfo, cancellationToken, parts.Length > 2 ? parts[2] : string.Empty);
     }
 
     public bool IsAwaitingBoxName(long chatId)

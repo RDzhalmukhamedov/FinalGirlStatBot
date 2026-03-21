@@ -67,6 +67,7 @@ public class GirlsSelectedBoxAction : BaseBoxCreationAction
             {
                 var isSelected = state.GirlIds.Contains(g.Id);
                 var buttonText = isSelected ? $"✓ {g.Name}" : g.Name;
+                buttonText = g.BoxId.HasValue ? $"{buttonText} 📼" : buttonText;
                 return new InlineKeyboardButton(buttonText, $"{callbackPart}{g.Id}");
             }).ToArray());
         }

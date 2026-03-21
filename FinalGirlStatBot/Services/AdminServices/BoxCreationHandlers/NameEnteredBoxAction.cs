@@ -66,7 +66,7 @@ public class NameEnteredBoxAction : BaseBoxCreationAction
 
         foreach (var chunk in locations.Chunk(2))
         {
-            keyboard.Add(chunk.Select(l => new InlineKeyboardButton(l.Name, $"{callbackPart}{l.Id}")).ToArray());
+            keyboard.Add(chunk.Select(l => new InlineKeyboardButton(l.BoxId.HasValue ? $"{l.Name} 📼" : l.Name, $"{callbackPart}{l.Id}")).ToArray());
         }
 
         keyboard.Add(
